@@ -144,18 +144,94 @@
 
 ## モニタリングパターン
 
-### OpenTelemetry
+### OpenTelemetry実装
 
-1. トレース
+1. トレース計装パターン
+   ```csharp
+   // ActivitySourceの定義
+   public static class TelemetryConstants
+   {
+       public const string ServiceName = "TodoApp.Api";
+       public static readonly ActivitySource ActivitySource = new(ServiceName);
+   }
 
-   - リクエストの追跡
-   - パフォーマンス計測
-   - エラー検出
+   // MediatRパイプラインでのトレース
+   public class TracingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+   {
+       private readonly ActivitySource _activitySource;
+       
+       public async Task<TResponse> Handle(TRequest request, ...)
+       {
+           using var activity = _activitySource.StartActivity($"Handle{typeof(TRequest).Name}");
+           activity?.SetTag("request.type", typeof(TRequest).Name);
+           // 処理の実行とタグの設定
+       }
+   }
+   ```
 
-2. メトリクス
-   - システムリソース
-   - アプリケーションメトリクス
-   - ビジネスメトリクス
+2. メトリクス実装パターン
+   ```csharp
+   // メトリクス定義
+   public static class TelemetryConstants
+   {
+       public static readonly Meter Meter = new(ServiceName);
+       public static readonly Counter<int> TodoItemsCreated = 
+           Meter.CreateCounter<int>("todo.items.created");
+       public static readonly Histogram<double> RequestDuration = 
+           Meter.CreateHistogram<double>("request.duration", "ms");
+   }
+
+   // メトリクス記録
+   public class TodoController
+   {
+       public async Task<ActionResult<TodoDto>> Create(...)
+       {
+           TelemetryConstants.TodoItemsCreated.Add(1);
+           TelemetryConstants.RequestDuration.Record(elapsed.TotalMilliseconds);
+       }
+   }
+   ```
+
+3. エクスポーター設定パターン
+   ```csharp
+   public static IServiceCollection AddOpenTelemetryServices(
+       this IServiceCollection services,
+       IConfiguration configuration)
+   {
+       services.AddOpenTelemetry()
+           .WithTracing(builder => builder
+               .AddAspNetCoreInstrumentation()
+               .AddEntityFrameworkCoreInstrumentation()
+               .AddJaegerExporter())
+           .WithMetrics(builder => builder
+               .AddAspNetCoreInstrumentation()
+               .AddRuntimeInstrumentation()
+               .AddPrometheusExporter());
+   }
+   ```
+
+4. コンテキスト伝播パターン
+   - HTTP HeadersによるトレースID伝播
+   - ActivityコンテキストのScope管理
+   - バックグラウンドジョブでのコンテキスト維持
+
+5. モニタリングインフラストラクチャ
+   ```yaml
+   # Prometheusの設定
+   scrape_configs:
+     - job_name: 'todo-api'
+       static_configs:
+         - targets: ['localhost:5001']
+       metrics_path: '/metrics'
+
+   # Grafanaダッシュボードの構造
+   - name: "Todo Application"
+     panels:
+       - title: "Request Duration"
+         metrics: "request_duration_milliseconds"
+       - title: "Todo Items Created"
+         metrics: "todo_items_created_total"
+   ```
 
 ### ログ戦略
 

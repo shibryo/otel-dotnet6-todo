@@ -78,15 +78,39 @@
    - スコープ管理
    - 接続文字列の注入
 
-#### 今後の実装
-1. OpenTelemetry
-   - トレースプロバイダー設定
+#### 可観測性基盤
+1. OpenTelemetry実装
+   - トレーシング
+     ```csharp
+     // 実装パッケージ
+     - OpenTelemetry.Extensions.Hosting
+     - OpenTelemetry.Instrumentation.AspNetCore
+     - OpenTelemetry.Instrumentation.EntityFrameworkCore
+     - OpenTelemetry.Exporter.Jaeger
+     - OpenTelemetry.Exporter.Prometheus.AspNetCore
+     ```
    - メトリクス収集
-   - ログ統合
+     - カスタムメーター設定
+     - Todoアプリケーション固有のメトリクス
+     - システムメトリクスの自動収集
+   - アクティビティソース
+     - HTTPコンテキスト伝播
+     - MediatRパイプラインの計装
+     - カスタムアクティビティ
 
-2. 外部サービス連携
-   - Jaeger
-   - OTLP
+2. モニタリングスタック
+   - Jaeger (トレース)
+     - ポート: 16686 (UI)
+     - プロトコル: OTLP (gRPC)
+     - 収集設定: サンプリングなし
+   - Prometheus (メトリクス)
+     - スクレイピング間隔: 15秒
+     - エンドポイント: /metrics
+     - カスタムメトリクス収集
+   - Grafana (可視化)
+     - 認証: Anonymous Admin
+     - データソース: Prometheus
+     - ポート: 3000
 
 ### View 層（API）
 
@@ -122,4 +146,14 @@
 ### E2E テスト
 
 - curl を使用したシナリオテスト
-- Jaeger でのトレース確認
+- 分散トレーシングの検証
+  ```bash
+  # トレースの確認
+  curl http://localhost:16686
+  
+  # メトリクスの確認
+  curl http://localhost:5001/metrics
+  
+  # Grafanaダッシュボード
+  curl http://localhost:3000
+  ```

@@ -10,6 +10,3 @@ docker_build(
         run('dotnet build', trigger=['**/*.cs', '**/*.csproj'])
     ]
 )
-
-# Port forwards
-k8s_yaml('tilt/docker-compose.yml')  # Tilt will extract port information from compose file

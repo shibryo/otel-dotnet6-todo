@@ -13,5 +13,13 @@
   },
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}
-  }
+  },
+  "forwardPorts": [
+    5001,
+    16686,
+    4317,
+    4318,
+    9090,
+    3000
+  ]
 }

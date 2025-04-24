@@ -1,9 +1,6 @@
-using System.Reflection;
-using FluentValidation;
-using MediatR;
 using Microsoft.OpenApi.Models;
 using TodoApp.Api.Extensions;
-using TodoApp.Application.Commands;
+using TodoApp.Application;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,15 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Add MediatR
-builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(CreateTodo).Assembly);
-});
+// Add Application Layer
+builder.Services.AddApplication();
 
-// Add FluentValidation
-builder.Services.AddValidatorsFromAssembly(typeof(CreateTodo).Assembly);
-
-// Add Infrastructure services
+// Add Infrastructure Layer
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add OpenTelemetry
@@ -56,6 +48,24 @@ app.UseExceptionHandler("/error");
 app.MapPrometheusScrapingEndpoint();
 
 app.UseHttpsRedirection();
+
+// Add request logging middleware
+app.Use(async (context, next) =>
+{
+    var startTime = DateTime.UtcNow;
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        var elapsed = DateTime.UtcNow - startTime;
+        TelemetryConstants.RequestDuration.Record(elapsed.TotalMilliseconds,
+            new KeyValuePair<string, object?>("path", context.Request.Path),
+            new KeyValuePair<string, object?>("method", context.Request.Method),
+            new KeyValuePair<string, object?>("status", context.Response.StatusCode));
+    }
+});
 
 app.UseAuthorization();
 
