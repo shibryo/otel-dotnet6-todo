@@ -33,3 +33,5 @@ USER $USERNAME
 
 # Set the working directory
 WORKDIR /workspace
+
+CMD ["dotnet", "run", "--project", "src/Api/TodoApp.Api.csproj"]

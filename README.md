@@ -2,6 +2,80 @@
 
 このプロジェクトは dotnet6 を使用した todo アプリ主に CRUD を実現し、リクエストを opentelemetry で監視することを確認する。
 
+## API エンドポイント
+
+### Todo作成
+
+```bash
+curl -X POST http://localhost:5000/api/todo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "買い物に行く",
+    "description": "牛乳と卵を買う",
+    "dueDate": "2025-04-25T15:00:00Z"
+  }'
+```
+
+レスポンス:
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "title": "買い物に行く",
+  "description": "牛乳と卵を買う",
+  "isCompleted": false,
+  "dueDate": "2025-04-25T15:00:00Z",
+  "createdAt": "2025-04-24T16:02:04.123456Z",
+  "updatedAt": "2025-04-24T16:02:04.123456Z"
+}
+```
+
+### Todo更新
+
+```bash
+curl -X PUT http://localhost:5000/api/todo/3fa85f64-5717-4562-b3fc-2c963f66afa6 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "買い物に行く",
+    "description": "牛乳と卵とパンを買う",
+    "isCompleted": true,
+    "dueDate": "2025-04-25T15:00:00Z"
+  }'
+```
+
+### Todo削除
+
+```bash
+curl -X DELETE http://localhost:5000/api/todo/3fa85f64-5717-4562-b3fc-2c963f66afa6
+```
+
+### Todo取得（単一）
+
+```bash
+curl http://localhost:5000/api/todo/3fa85f64-5717-4562-b3fc-2c963f66afa6
+```
+
+### Todo一覧取得
+
+全件取得:
+```bash
+curl http://localhost:5000/api/todo
+```
+
+フィルター例:
+```bash
+# 完了済みのTodoのみ
+curl "http://localhost:5000/api/todo?isCompleted=true"
+
+# 期限切れのTodoのみ
+curl "http://localhost:5000/api/todo?isOverdue=true"
+
+# 特定の期限以前のTodoのみ
+curl "http://localhost:5000/api/todo?dueBefore=2025-04-25T00:00:00Z"
+
+# キーワード検索
+curl "http://localhost:5000/api/todo?searchTerm=買い物"
+```
+
 ## get started
 
 ## プロジェクトの要件
