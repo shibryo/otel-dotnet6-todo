@@ -31,7 +31,16 @@
 
 ### 進行中の作業
 
-- API層の実装準備
+- OpenTelemetryの設定
+- テストの実装
+
+### 完了した作業
+
+- API層の実装
+  - TodoControllerの実装
+  - エラーハンドリング
+  - Swagger設定
+  - OpenTelemetry基本設定
 
 ## 次のステップ
 
