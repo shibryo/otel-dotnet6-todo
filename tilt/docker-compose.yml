@@ -6,7 +6,7 @@ services:
     volumes:
       - ..:/workspace:cached
       - ../scripts/db:/docker-entrypoint-initdb.d:ro
-    command: dotnet watch run --project /workspace/src/Api/Api.csproj
+    command: dotnet watch run --project /workspace/src/Api/TodoApp.Api.csproj
     image: otel-dotnet6-todo-app
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -31,6 +31,8 @@ services:
     image: jaegertracing/all-in-one:latest
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
 
   prometheus:
     image: prom/prometheus:latest
