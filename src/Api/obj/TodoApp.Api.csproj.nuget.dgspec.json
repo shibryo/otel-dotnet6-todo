@@ -48,6 +48,50 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "dependencies": {
+            "FluentValidation.AspNetCore": {
+              "target": "Package",
+              "version": "[11.3.0, )"
+            },
+            "MediatR": {
+              "target": "Package",
+              "version": "[12.5.0, )"
+            },
+            "OpenTelemetry": {
+              "target": "Package",
+              "version": "[1.7.0, )"
+            },
+            "OpenTelemetry.Exporter.Console": {
+              "target": "Package",
+              "version": "[1.7.0, )"
+            },
+            "OpenTelemetry.Exporter.Jaeger": {
+              "target": "Package",
+              "version": "[1.6.0-rc.1, )"
+            },
+            "OpenTelemetry.Exporter.Prometheus.AspNetCore": {
+              "target": "Package",
+              "version": "[1.7.0-rc.1, )"
+            },
+            "OpenTelemetry.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[1.7.0, )"
+            },
+            "OpenTelemetry.Instrumentation.AspNetCore": {
+              "target": "Package",
+              "version": "[1.7.1, )"
+            },
+            "OpenTelemetry.Instrumentation.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[1.0.0-beta.10, )"
+            },
+            "OpenTelemetry.Instrumentation.Http": {
+              "target": "Package",
+              "version": "[1.7.1, )"
+            },
+            "OpenTelemetry.Instrumentation.Runtime": {
+              "target": "Package",
+              "version": "[1.7.0, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.5.0, )"
@@ -100,6 +144,9 @@
             "projectReferences": {
               "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj": {
                 "projectPath": "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj"
+              },
+              "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj": {
+                "projectPath": "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj"
               }
             }
           }
@@ -125,10 +172,6 @@
             "MediatR": {
               "target": "Package",
               "version": "[12.5.0, )"
-            },
-            "MediatR.Extensions.Microsoft.DependencyInjection": {
-              "target": "Package",
-              "version": "[11.1.0, )"
             }
           },
           "imports": [
@@ -226,9 +269,6 @@
           "net6.0": {
             "targetAlias": "net6.0",
             "projectReferences": {
-              "/workspaces/otel-dotnet6-todo/src/Application/TodoApp.Application.csproj": {
-                "projectPath": "/workspaces/otel-dotnet6-todo/src/Application/TodoApp.Application.csproj"
-              },
               "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj": {
                 "projectPath": "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj"
               }
@@ -264,6 +304,14 @@
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
               "version": "[6.0.22, )"
+            },
+            "OpenTelemetry": {
+              "target": "Package",
+              "version": "[1.7.0, )"
+            },
+            "System.Diagnostics.DiagnosticSource": {
+              "target": "Package",
+              "version": "[8.0.0, )"
             }
           },
           "imports": [

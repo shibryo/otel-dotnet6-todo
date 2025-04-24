@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using MediatR;
-using TodoApp.Api.Extensions;
+using TodoApp.Infrastructure.Telemetry;
 
 namespace TodoApp.Application.Common.Behaviors;
 

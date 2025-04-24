@@ -2,6 +2,7 @@ using Microsoft.OpenApi.Models;
 using TodoApp.Api.Extensions;
 using TodoApp.Application;
 using TodoApp.Infrastructure;
+using TodoApp.Infrastructure.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +13,7 @@ builder.Services.AddControllers();
 builder.Services.AddApplication();
 
 // Add Infrastructure Layer
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
 
 // Add OpenTelemetry
 builder.Services.AddOpenTelemetryServices(builder.Configuration);
@@ -47,7 +48,8 @@ app.UseExceptionHandler("/error");
 // Add Prometheus metrics endpoint
 app.MapPrometheusScrapingEndpoint();
 
-app.UseHttpsRedirection();
+// Temporarily disable HTTPS redirection for development
+// app.UseHttpsRedirection();
 
 // Add request logging middleware
 app.Use(async (context, next) =>

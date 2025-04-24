@@ -2,13 +2,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\TodoApp.Domain.csproj" />
+    <ProjectReference Include="..\Infrastructure\TodoApp.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="11.11.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
     <PackageReference Include="MediatR" Version="12.5.0" />
-    <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
   </ItemGroup>
 
   <PropertyGroup>

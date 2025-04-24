@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using TodoApp.Api.Extensions;
 using TodoApp.Application.Commands;
+using TodoApp.Application.Common;
 using TodoApp.Application.DTOs;
 using TodoApp.Application.Queries;
+using TodoApp.Infrastructure.Telemetry;
 
 namespace TodoApp.Api.Controllers;
 
@@ -28,7 +29,7 @@ public class TodoController : ControllerBase
         activity?.SetTag("todo.title", createTodoDto.Title);
         
         var startTime = DateTime.UtcNow;
-        var command = new CreateTodo(createTodoDto);
+        var command = new CreateTodo.Command(createTodoDto);
         var result = await _mediator.Send(command, cancellationToken);
         
         TelemetryConstants.RequestDuration.Record((DateTime.UtcNow - startTime).TotalMilliseconds);
@@ -40,7 +41,7 @@ public class TodoController : ControllerBase
             return CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value);
         }
 
-        return BadRequest(result.Error);
+        return BadRequest(result.Errors.First());
     }
 
     [HttpPut("{id}")]
@@ -51,7 +52,7 @@ public class TodoController : ControllerBase
         activity?.SetTag("todo.completed", updateTodoDto.IsCompleted);
         
         var startTime = DateTime.UtcNow;
-        var command = new UpdateTodo(id, updateTodoDto);
+        var command = new UpdateTodo.Command(id, updateTodoDto);
         var result = await _mediator.Send(command, cancellationToken);
         
         TelemetryConstants.RequestDuration.Record((DateTime.UtcNow - startTime).TotalMilliseconds);
@@ -65,7 +66,7 @@ public class TodoController : ControllerBase
             return Ok(result.Value);
         }
 
-        return NotFound(result.Error);
+        return NotFound(result.Errors.First());
     }
 
     [HttpDelete("{id}")]
@@ -75,7 +76,7 @@ public class TodoController : ControllerBase
         activity?.SetTag("todo.id", id);
         
         var startTime = DateTime.UtcNow;
-        var command = new DeleteTodo(id);
+        var command = new DeleteTodo.Command(id);
         var result = await _mediator.Send(command, cancellationToken);
         
         TelemetryConstants.RequestDuration.Record((DateTime.UtcNow - startTime).TotalMilliseconds);
@@ -85,7 +86,7 @@ public class TodoController : ControllerBase
             return NoContent();
         }
 
-        return NotFound(result.Error);
+        return NotFound(result.Errors.First());
     }
 
     [HttpGet("{id}")]
@@ -95,7 +96,7 @@ public class TodoController : ControllerBase
         activity?.SetTag("todo.id", id);
         
         var startTime = DateTime.UtcNow;
-        var query = new GetTodoById(id);
+        var query = new GetTodoById.Query(id);
         var result = await _mediator.Send(query, cancellationToken);
         
         TelemetryConstants.RequestDuration.Record((DateTime.UtcNow - startTime).TotalMilliseconds);
@@ -105,7 +106,7 @@ public class TodoController : ControllerBase
             return Ok(result.Value);
         }
 
-        return NotFound(result.Error);
+        return NotFound(result.Errors.First());
     }
 
     [HttpGet]
@@ -115,7 +116,7 @@ public class TodoController : ControllerBase
         activity?.SetTag("filter.completed", filter.IsCompleted);
         
         var startTime = DateTime.UtcNow;
-        var query = new GetTodos(filter);
+        var query = new GetTodos.Query(filter);
         var result = await _mediator.Send(query, cancellationToken);
         
         TelemetryConstants.RequestDuration.Record((DateTime.UtcNow - startTime).TotalMilliseconds);

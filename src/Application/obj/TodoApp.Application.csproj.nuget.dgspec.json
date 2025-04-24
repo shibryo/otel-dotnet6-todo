@@ -28,6 +28,9 @@
             "projectReferences": {
               "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj": {
                 "projectPath": "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj"
+              },
+              "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj": {
+                "projectPath": "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj"
               }
             }
           }
@@ -53,10 +56,6 @@
             "MediatR": {
               "target": "Package",
               "version": "[12.5.0, )"
-            },
-            "MediatR.Extensions.Microsoft.DependencyInjection": {
-              "target": "Package",
-              "version": "[11.1.0, )"
             }
           },
           "imports": [
@@ -112,6 +111,93 @@
       "frameworks": {
         "net6.0": {
           "targetAlias": "net6.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/6.0.428/RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj",
+        "projectName": "TodoApp.Infrastructure",
+        "projectPath": "/workspaces/otel-dotnet6-todo/src/Infrastructure/TodoApp.Infrastructure.csproj",
+        "packagesPath": "/home/vscode/.nuget/packages/",
+        "outputPath": "/workspaces/otel-dotnet6-todo/src/Infrastructure/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/vscode/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {
+              "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj": {
+                "projectPath": "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[6.0.27, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[6.0.27, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[6.0.27, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[6.0.22, )"
+            },
+            "OpenTelemetry": {
+              "target": "Package",
+              "version": "[1.7.0, )"
+            },
+            "System.Diagnostics.DiagnosticSource": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
