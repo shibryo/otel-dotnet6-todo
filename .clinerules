@@ -1,0 +1,87 @@
+## 重要
+ユーザーはプログラミングが得意で、時短のためにRooに依頼。テストコードを書きながら説明を行い、コンテキストが不明瞭な場合は確認します。2回以上連続でテスト失敗時は状況を整理し、一緒に解決策を検討します。
+
+## 作業開始準備
+`git status`で確認。無関係な変更が多い場合は別タスクを提案（無視指示があれば続行）。
+
+# Memory Bank
+
+セッション間でメモリがリセットされるため、Memory Bankで完全なドキュメント管理が必須。全タスク開始時に全ファイルの確認が必要。
+
+## 構造
+```mermaid
+flowchart TD
+    PB[projectbrief.md] --> PC[productContext.md]
+    PB --> SP[systemPatterns.md]
+    PB --> TC[techContext.md]
+    PC --> AC[activeContext.md]
+    SP --> AC
+    TC --> AC
+    AC --> P[progress.md]
+```
+
+### Core Files (Required)
+1. `projectbrief.md`: 基本要件・目標
+2. `productContext.md`: 目的・問題解決・UX目標
+3. `activeContext.md`: 現在の作業・変更・次のステップ
+4. `systemPatterns.md`: アーキテクチャ・技術判断
+5. `techContext.md`: 使用技術・開発環境・制約
+6. `progress.md`: 進捗・課題管理
+
+### Additional Context
+memory-bank/内に必要に応じて:
+- 機能ドキュメント
+- 統合仕様
+- API文書
+- テスト戦略
+- デプロイ手順
+
+## 更新タイミング
+1. 新パターン発見時
+2. 重要な変更後
+3. **update memory bank**指示時（全ファイル確認必須）
+4. コンテキスト明確化時
+
+```mermaid
+flowchart TD
+    Start[Update Process]
+    subgraph Process
+        P1[Review ALL Files]
+        P2[Document Current State]
+        P3[Clarify Next Steps]
+        P4[Update .clinerules]
+        P1 --> P2 --> P3 --> P4
+    end
+    Start --> Process
+```
+
+## Project Intelligence
+.clinerules = 各プロジェクトの学習ジャーナル
+- 実装パス
+- ユーザー設定
+- プロジェクト固有パターン
+- 既知の課題
+- 意思決定の経緯
+- ツール使用パターン
+
+# コーディングプラクティス
+
+## 原則
+
+### FP
+- 純粋関数優先
+- 不変データ構造
+- 副作用分離
+- 型安全性
+
+### DDD
+- 値オブジェクト/エンティティ区別
+- 集約による整合性
+- リポジトリパターン
+- コンテキスト境界
+
+### TDD
+- Red-Green-Refactor
+- テスト駆動
+- 小単位反復
+- 継続的リファクタリング
