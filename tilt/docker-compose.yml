@@ -3,9 +3,6 @@ services:
     build:
       context: ..
       dockerfile: tilt/Dockerfile
-    volumes:
-      - ..:/workspace:cached
-      - ../scripts/db:/docker-entrypoint-initdb.d:ro
     image: otel-dotnet6-todo-app
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -16,6 +13,7 @@ services:
       - jaeger
     ports:
       - "5000:5000"
+      - "5001:5001"
 
   db:
     image: postgres:15-alpine

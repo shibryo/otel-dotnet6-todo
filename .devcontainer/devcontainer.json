@@ -12,8 +12,11 @@
     }
   },
   "features": {
-    "ghcr.io/devcontainers/features/git:1": {}
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2.12.2": {}
+
   },
+  "postCreateCommand": "cd && curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash",
   "forwardPorts": [
     5001,
     5000,
