@@ -12,12 +12,6 @@
     }
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/git:1": {}
-  },
-  "forwardPorts": [
-    5000, // API
-    5432, // PostgreSQL
-    16686 // Jaeger UI
-  ]
+  }
 }

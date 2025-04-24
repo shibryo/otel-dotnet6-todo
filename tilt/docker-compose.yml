@@ -1,13 +1,16 @@
 version: "3.8"
 
 services:
-  app:
+  otel-dotnet6-todo-app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: tilt/Dockerfile
     volumes:
       - ..:/workspace:cached
-    command: sleep infinity
+      - ../scripts/db:/docker-entrypoint-initdb.d:ro
+    command: dotnet watch run --project /workspace/src/Api/Api.csproj
+    ports:
+      - "5001:5001"
     network_mode: service:db
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -22,6 +25,7 @@ services:
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ../scripts/db:/docker-entrypoint-initdb.d:ro
     environment:
       - POSTGRES_DB=tododb
       - POSTGRES_USER=postgres
