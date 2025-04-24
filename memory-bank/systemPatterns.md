@@ -32,17 +32,28 @@
 
 ### リポジトリパターン
 
-- インターフェース定義
-  ```csharp
-  public interface ITodoRepository
-  {
-      Task<Todo> GetByIdAsync(Guid id);
-      Task<IEnumerable<Todo>> GetAllAsync();
-      Task AddAsync(Todo todo);
-      Task UpdateAsync(Todo todo);
-      Task DeleteAsync(Guid id);
-  }
-  ```
+1. インターフェース階層
+   - IRepository<T>による基本操作の定義
+   - ITodoRepositoryによるドメイン固有の操作拡張
+
+2. 実装パターン
+   ```csharp
+   public interface ITodoRepository : IRepository<Todo>
+   {
+       Task<IReadOnlyList<Todo>> GetCompletedAsync();
+       Task<IReadOnlyList<Todo>> GetIncompleteAsync();
+       Task<IReadOnlyList<Todo>> GetDueBeforeAsync(DateTimeOffset date);
+       Task<IReadOnlyList<Todo>> GetOverdueAsync();
+       Task<IReadOnlyList<Todo>> SearchByTitleAsync(string searchTerm);
+       Task<bool> ExistsAsync(Guid id);
+   }
+   ```
+
+3. 実装の特徴
+   - EF Coreとの統合
+   - 非同期操作の一貫した使用
+   - キャンセレーショントークンのサポート
+   - 読み取り専用リストの使用
 
 ### ファクトリーパターン
 
@@ -61,10 +72,37 @@
 ### Entity Framework Core
 
 1. コード優先アプローチ
-
+   - DbContext定義
+     ```csharp
+     public class TodoDbContext : DbContext
+     {
+         public DbSet<Todo> Todos { get; set; }
+         
+         protected override void OnModelCreating(ModelBuilder modelBuilder)
+         {
+             modelBuilder.ApplyConfiguration(new TodoConfiguration());
+         }
+     }
+     ```
+   - エンティティ設定
+     ```csharp
+     public class TodoConfiguration : IEntityTypeConfiguration<Todo>
+     {
+         public void Configure(EntityTypeBuilder<Todo> builder)
+         {
+             builder.HasKey(t => t.Id);
+             builder.Property(t => t.Title).IsRequired().HasMaxLength(255);
+             builder.Property(t => t.Description).IsRequired(false);
+             // その他のプロパティ設定
+         }
+     }
+     ```
    - マイグレーション管理
-   - スキーマバージョン管理
-   - データ整合性の保証
+
+2. クエリ最適化
+   - ILike関数による大文字小文字を区別しない検索
+   - インデックスの適切な設定
+   - 必要なデータのみの取得
 
 2. クエリ最適化
    - インデックス戦略

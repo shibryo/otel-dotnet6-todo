@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "dgSpecHash": "ahEbl/5lCCELr3NUtUY9QaYDI5eW9d4O+w8nanwVTRr28cGOVeFwMEkmU8FWD3k/clOvj3h/iW8wV3VyBUKMDQ==",
+  "success": true,
+  "projectFilePath": "/workspaces/otel-dotnet6-todo/src/Domain/TodoApp.Domain.csproj",
+  "expectedPackageFiles": [],
+  "logs": []
+}

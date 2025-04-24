@@ -56,16 +56,37 @@
 
 ### Infrastructure 層
 
-- データベースアクセス
-  - Entity Framework Core
-  - リポジトリ実装
-- OpenTelemetry
-  - トレースプロバイダー設定
-  - メトリクス収集
-  - ログ統合
-- 外部サービス連携
-  - Jaeger
-  - OTLP
+#### データベースアクセス
+1. Entity Framework Core 6.0
+   - DbContext実装（TodoDbContext）
+   - エンティティ設定（TodoConfiguration）
+   - マイグレーション管理
+   - デザインタイムDbContextFactory
+
+2. リポジトリ実装
+   - ITodoRepositoryの実装
+   - 非同期操作の完全サポート
+   - キャンセレーショントークン対応
+   - 効率的なクエリ実装
+     - 完了済みTodoの取得
+     - 未完了Todoの取得
+     - 期限切れTodoの取得
+     - タイトルでの検索（ILike）
+
+3. 依存関係の設定
+   - サービスコレクション拡張メソッド
+   - スコープ管理
+   - 接続文字列の注入
+
+#### 今後の実装
+1. OpenTelemetry
+   - トレースプロバイダー設定
+   - メトリクス収集
+   - ログ統合
+
+2. 外部サービス連携
+   - Jaeger
+   - OTLP
 
 ### View 層（API）
 

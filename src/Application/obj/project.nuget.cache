@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "dgSpecHash": "B25ZVUFIj5qrDixL1IqYLiB5cF1WUKkp90e2C9ClUySXfOUqIb2BJ5dbKnEV/4gIVowadjNbXcRjhQeN7UBVtw==",
+  "success": true,
+  "projectFilePath": "/workspaces/otel-dotnet6-todo/src/Application/TodoApp.Application.csproj",
+  "expectedPackageFiles": [
+    "/home/vscode/.nuget/packages/fluentvalidation/11.11.0/fluentvalidation.11.11.0.nupkg.sha512",
+    "/home/vscode/.nuget/packages/fluentvalidation.dependencyinjectionextensions/11.11.0/fluentvalidation.dependencyinjectionextensions.11.11.0.nupkg.sha512",
+    "/home/vscode/.nuget/packages/mediatr/12.5.0/mediatr.12.5.0.nupkg.sha512",
+    "/home/vscode/.nuget/packages/mediatr.contracts/2.0.1/mediatr.contracts.2.0.1.nupkg.sha512",
+    "/home/vscode/.nuget/packages/mediatr.extensions.microsoft.dependencyinjection/11.1.0/mediatr.extensions.microsoft.dependencyinjection.11.1.0.nupkg.sha512",
+    "/home/vscode/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/8.0.0/microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1608",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Detected package version outside of dependency constraint: MediatR.Extensions.Microsoft.DependencyInjection 11.1.0 requires MediatR (>= 11.0.0 && < 12.0.0) but version MediatR 12.5.0 was resolved.",
+      "libraryId": "MediatR",
+      "targetGraphs": [
+        "net6.0"
+      ]
+    }
+  ]
+}

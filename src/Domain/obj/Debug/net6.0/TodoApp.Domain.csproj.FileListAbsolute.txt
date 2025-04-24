@@ -1,0 +1,12 @@
+/workspaces/otel-dotnet6-todo/src/Domain/bin/Debug/net6.0/TodoApp.Domain.deps.json
+/workspaces/otel-dotnet6-todo/src/Domain/bin/Debug/net6.0/TodoApp.Domain.dll
+/workspaces/otel-dotnet6-todo/src/Domain/bin/Debug/net6.0/TodoApp.Domain.pdb
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.csproj.AssemblyReference.cache
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.AssemblyInfoInputs.cache
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.AssemblyInfo.cs
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.csproj.CoreCompileInputs.cache
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.dll
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/refint/TodoApp.Domain.dll
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/TodoApp.Domain.pdb
+/workspaces/otel-dotnet6-todo/src/Domain/obj/Debug/net6.0/ref/TodoApp.Domain.dll

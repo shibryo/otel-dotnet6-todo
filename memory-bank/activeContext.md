@@ -10,116 +10,115 @@
 - システムパターンの定義
 - DevContainer 環境の基本設定
   - devcontainer.json
-  - docker-compose.yml（PostgreSQL 含む）
+  - docker-compose.yml（PostgreSQL, Jaeger含む）
   - Dockerfile
+- Tilt 環境のセットアップ
+- プロジェクト構造の作成
+  - ソリューションの作成
+  - プロジェクト間の依存関係設定
+  - 必要なパッケージのインストール
+- Domain層の実装
+  - Todoエンティティ
+  - ドメイン例外
+  - リポジトリインターフェース
+- Application層の実装
+  - DTOs（TodoDto, CreateTodoDto, UpdateTodoDto, TodoFilterDto）
+  - Commands（CreateTodo, UpdateTodo, DeleteTodo）
+  - Queries（GetTodoById, GetTodos）
+  - Validation（CreateTodoValidator, UpdateTodoValidator）
+  - 共通クラス（Result<T>）
+- データベース初期化スクリプトの作成
 
 ### 進行中の作業
 
-- Tilt 環境のセットアップ
-- プロジェクト構造の計画
+- API層の実装準備
 
 ## 次のステップ
 
-### 1. Tilt 環境のセットアップ
+### 1. API層の実装
 
-1. Tilt 環境の構築
-
-   - Tiltfile の作成
-   - リソース定義
-   - ホットリロード設定
-
-2. データベース環境の準備
-   - 初期化スクリプトの作成
-   - マイグレーション計画
-
-### 2. プロジェクトの初期化
-
-1. ソリューション構造の作成
-
-   ```
-   src/
-   ├── Domain/
-   ├── Application/
-   ├── Infrastructure/
-   ├── Api/
-   └── Tests/
-       ├── Unit/
-       ├── Integration/
-       └── E2E/
-   ```
-
-2. 基本的なエンティティとインターフェースの実装
-   - Todo エンティティ
-   - リポジトリインターフェース
-   - DB コンテキスト
-
-### 3. 機能実装
-
-1. Domain 層
-
-   - エンティティの実装
-   - 値オブジェクトの実装
-   - ドメインサービスの実装
-
-2. Application 層
-
-   - ユースケースの実装
-   - DTO の定義
-   - バリデーションの実装
-
-3. Infrastructure 層
-
-   - リポジトリの実装
-   - DB マイグレーション
-   - OpenTelemetry の設定
-
-4. API 層
-   - コントローラーの実装
-   - ミドルウェアの設定
+1. コントローラー
+   - TodoControllerの実装
    - エラーハンドリング
+   - バリデーション
 
-### 4. テスト実装
+2. ミドルウェア
+   - 例外ハンドリング
+   - ログ記録
+   - 認証/認可（必要に応じて）
+
+3. Swagger設定
+   - APIドキュメント
+   - 例示データ
+
+### 2. OpenTelemetryの設定
+   - トレース設定
+   - メトリクス設定
+   - ログ設定
+
+### 3. テストの実装
 
 1. ユニットテスト
+   - TodoControllerの実装
+   - エラーハンドリング
+   - バリデーション
 
-   - Domain のテスト
-   - Application のテスト
+2. ミドルウェア
+   - 例外ハンドリング
+   - ログ記録
+   - 認証/認可（必要に応じて）
+
+3. Swagger設定
+   - APIドキュメント
+   - 例示データ
+
+### 3. テスト実装
+
+1. ユニットテスト
+   - ドメインロジックのテスト
+   - コマンド/クエリハンドラーのテスト
+   - バリデーションのテスト
 
 2. インテグレーションテスト
+   - リポジトリのテスト
+   - APIエンドポイントのテスト
+   - データベース操作のテスト
 
-   - API のテスト
-   - DB のテスト
-
-3. E2E テスト
+3. E2Eテスト
    - シナリオテスト
    - パフォーマンステスト
 
 ## 優先度の高い課題
 
-1. DevContainer 環境の構築
-2. データベース設計とマイグレーション
-3. OpenTelemetry の統合設計
+1. EF CoreとPostgreSQLの統合
+2. OpenTelemetryの適切な設定
+3. テストカバレッジの確保
 
 ## リスク管理
 
 1. 技術的なリスク
-
-   - OpenTelemetry の設定複雑性
-   - マイクロサービス間の通信の信頼性
+   - EF Core最適化
+   - N+1問題の防止
    - パフォーマンスボトルネック
 
-2. プロジェクト管理のリスク
-   - 技術スタックの学習曲線
-   - テスト範囲の適切な設定
+2. 品質管理
+   - テストカバレッジ
+   - コードの保守性
+   - エラーハンドリングの網羅性
 
 ## 決定事項
 
 1. アーキテクチャ
+   - CQRSパターンの採用
+   - MediatRによるメッセージング
+   - FluentValidationによる入力検証
 
-   - オニオンアーキテクチャの採用
-   - CQRS パターンの適用
-   - リポジトリパターンの使用
+2. データアクセス
+   - EF Coreの採用
+   - リポジトリパターン
+   - 非同期処理の徹底
 
-2. テスト戦略
-   - TDD アプローチの採用
-   - テストピラミッドの比率設定
+3. 監視と可観測性
+   - OpenTelemetryの採用
+   - Jaegerによるトレース可視化
+   - 構造化ログ

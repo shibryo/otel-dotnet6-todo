@@ -1,0 +1,15 @@
+/workspaces/otel-dotnet6-todo/src/Application/bin/Debug/net6.0/TodoApp.Application.deps.json
+/workspaces/otel-dotnet6-todo/src/Application/bin/Debug/net6.0/TodoApp.Application.dll
+/workspaces/otel-dotnet6-todo/src/Application/bin/Debug/net6.0/TodoApp.Application.pdb
+/workspaces/otel-dotnet6-todo/src/Application/bin/Debug/net6.0/TodoApp.Domain.dll
+/workspaces/otel-dotnet6-todo/src/Application/bin/Debug/net6.0/TodoApp.Domain.pdb
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.csproj.AssemblyReference.cache
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.GeneratedMSBuildEditorConfig.editorconfig
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.AssemblyInfoInputs.cache
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.AssemblyInfo.cs
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.csproj.CoreCompileInputs.cache
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.csproj.CopyComplete
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.dll
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/refint/TodoApp.Application.dll
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/TodoApp.Application.pdb
+/workspaces/otel-dotnet6-todo/src/Application/obj/Debug/net6.0/ref/TodoApp.Application.dll
