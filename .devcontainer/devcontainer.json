@@ -4,7 +4,8 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "18"
-    }
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker": {}
   },
   "customizations": {
     "vscode": {
@@ -21,7 +22,7 @@
       }
     }
   },
-  "forwardPorts": [5000, 5001],
+  "forwardPorts": [5000, 5001, 80, 5432, 5050],
   "remoteUser": "vscode",
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
