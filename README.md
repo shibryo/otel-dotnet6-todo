@@ -1,39 +1,178 @@
-# otel-dotnet6-todo
+# OpenTelemetry 学習のための Todo アプリケーション
 
-このプロジェクトは dotnet6 を使用した todo アプリ主に CRUD を実現し、リクエストを opentelemetry で監視することを確認する。
+## プロジェクトの概要
 
-## 進め方
-### 前提
-ユーザーがotelの利用方法やメリットについて実感できるハンズオン形式で実装を進めます。
-そのため、私は実装を行わずにハンズオン資料のみを提供します。
-私はユーザーの教師となり、用語の理解度を確認する問題やRFCや公式サイトなどの一次情報を提供しユーザーのdotnet6でのOtelの実践的な理解を支援します。
-もし、ユーザーから資料の方向性について提案を受けた場合は意図を確認し、必ず資料を更新します。
-また、資料は適切な章立てで分割されており、学びを最大化する内容であること。
-細かな仕様に関しては重要な部分を除き、参照資料を提供するだけにとどめユーザーの好奇心の余地を残すこと。
-学習の状況が可視化できる状態を管理していること
+このプロジェクトは、OpenTelemetry の実践的な学習を目的とした、.NET 6 を使用した Todo アプリケーションです。
+シンプルな CRUD 操作を通じて、OpenTelemetry の基本概念から実装まで、段階的に学習できる環境を提供します。
 
-### 進め方
-n章を実施する
-* ユーザーが資料を読み込む
-* ユーザーが実装をする
-* ユーザーが動作確認をする
-* もしユーザーが疑問を持てば、質問する
-* 私は実装内容を把握し、講評を行う
-* 実装内容と講評などをCommitとして残す
+### 学習目標
 
-次のステップ・n+1章に進む
+1. OpenTelemetry の基本概念の理解
 
-### ワーク後
+   - Traces, Metrics, Logs の概念
+   - Context Propagation の仕組み
+   - Sampling 戦略の理解
 
-ワーク後のこのリポジトリは他の人のユーザーも利用することを考え作成したテキストは履修前の状態をテキストとして残し最初から始められるようにフォルダ構成や内容を整えること。
-教師役となる私の振る舞いもプロンプトとして残しておくこと。
+2. .NET 6 での OpenTelemetry 実装
 
-## 要件
-* Opentemtryを実装したCURD（ただし、自動計装で完了する部分はそのままでOK。SpanやMetricsの実装も説明用に実装するだけで最小限で良い。）
-* 簡単なUIによるアプリ動作確認環境
-* dotnet6
-* postgres15
-* devcotnainerとは独立した、tiltによるDocker composeのオーケストレーション
-* 純粋なdotnet6によるdevcontainer環境
-* Opentelemetryによって活躍するBackendアプリ（Jaegerや,Grahpanaなど）
-* Opentelemery Collector
+   - 自動計装（Auto-instrumentation）の活用
+   - カスタム Span の作成と属性の追加
+   - メトリクスの収集と可視化
+   - 分散トレーシングの実装
+
+3. 可観測性（Observability）の実践
+   - Jaeger によるトレース可視化
+   - Grafana によるメトリクス監視
+   - OpenTelemetry Collector の設定と活用
+
+## システム構成
+
+### アプリケーションアーキテクチャ
+
+```mermaid
+graph TD
+    A[Todo Frontend] -->|HTTP| B[Todo API]
+    B -->|SQL| C[PostgreSQL]
+    B -->|Export| D[OTel Collector]
+    D -->|Export| E[Jaeger]
+    D -->|Export| F[Grafana]
+```
+
+### 技術スタック
+
+- **アプリケーション**
+
+  - .NET 6 Web API
+  - Entity Framework Core
+  - PostgreSQL 15
+  - 最小限の React フロントエンド
+
+- **観測環境**
+
+  - OpenTelemetry SDK
+  - OpenTelemetry Collector
+  - Jaeger
+  - Grafana
+
+- **開発環境**
+  - Dev Container（純粋な.NET 6 環境）
+  - Tilt（ローカル開発環境のオーケストレーション）
+  - Docker Compose
+
+## 学習ステップ
+
+### 第 1 章：環境構築と Todo アプリの基本実装
+
+- Dev Container 環境の構築
+- .NET 6 WebAPI プロジェクトの作成
+- Entity Framework を使用した CRUD 実装
+- 動作確認用の最小限の UI 実装
+
+### 第 2 章：OpenTelemetry の導入
+
+- OpenTelemetry SDK の統合
+- 自動計装の設定
+- カスタム Span の実装
+- メトリクスの追加
+
+### 第 3 章：観測環境の構築
+
+- OpenTelemetry Collector の設定
+- Jaeger の統合
+- Grafana のダッシュボード設定
+- 分散トレーシングの確認
+
+### 第 4 章：高度な機能と運用
+
+- Sampling 設定の最適化
+- カスタムメトリクスの追加
+- エラー処理の改善
+- パフォーマンス分析
+
+## 学習の進め方
+
+1. 各章は以下のサイクルで進めます：
+
+   - 資料の読み込み
+   - 実装演習
+   - 動作確認
+   - 質疑応答
+   - コードレビューと講評
+   - 学習内容のコミット（git に履歴を残す）
+
+2. 講師（AI）は以下のサポートを提供：
+
+   - 実装手順の解説
+   - 参考資料の提供（RFC、公式ドキュメント等）
+   - 質問への回答
+   - コードレビューと改善提案
+
+3. 進捗管理：
+   - 各章での学習目標の達成確認
+   - 実装の品質チェック
+   - 理解度の確認質問
+   - フィードバックの収集
+
+## 注意事項
+
+- このプロジェクトは学習用であり、プロダクション利用は想定していません
+- コードの可読性を重視し、複雑な実装は避けます
+- UI は機能確認用の最小限の実装とします
+- OpenTelemetry の実装も説明用に必要最小限とします
+
+## 参考資料
+
+- [OpenTelemetry 公式ドキュメント](https://opentelemetry.io/docs/)
+- [.NET 用 OpenTelemetry SDK](https://github.com/open-telemetry/opentelemetry-dotnet)
+- [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
+- [OpenTelemetry 仕様](https://github.com/open-telemetry/opentelemetry-specification)
+
+## ライセンス
+
+MIT
+
+## ハンズオン完了後の資料管理
+
+このリポジトリは、複数の学習者が同じ内容を学べるよう以下の方針で管理されます：
+
+### ブランチ管理
+
+- `main`: 初期状態のブランチ（ハンズオン開始時の状態）
+- `chapters/*`: 各章の完了状態を保存
+- `solutions`: 完成形のリファレンス実装
+- `your-work`: あなたの作業用ブランチ
+
+### ディレクトリ構成
+
+```
+.
+├── docs/           # 学習テキストと解説
+│   ├── chapters/   # 章ごとの学習資料
+│   └── solutions/  # 解答例と説明
+├── src/            # ソースコード
+│   ├── start/      # 初期状態（スケルトン）
+│   └── complete/   # 完成形のリファレンス実装
+└── exercises/      # 演習問題と課題
+```
+
+### 資料の再利用
+
+1. このリポジトリをフォーク
+2. `your-work`ブランチを作成
+3. 各章のテキストに従って実装
+4. 必要に応じて`solutions`ブランチを参照
+
+### 講師（AI）プロンプト
+
+- `docs/prompts/`に講師役の AI の振る舞いを定義
+- 各章の目標に応じた適切なレビューと指導
+- 理解度の確認と追加の説明提供
+
+## 貢献について
+
+プルリクエストや提案は歓迎します。ただし、以下の点に注意してください：
+
+- 学習目的のシンプルさを維持すること
+- コードの可読性を重視すること
+- 十分なドキュメントを含めること
+- 再利用可能な形での資料整備を心がけること
