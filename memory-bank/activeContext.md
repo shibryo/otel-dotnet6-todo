@@ -89,8 +89,8 @@
 
 2. 学習テキストの作成
    - docs/chapters/01_setup/配下にセットアップ手順を作成
-     - 環境はこのリポジトリベースとしてDevcontainerを起動させた状態とし、実装はsrc配下に構築
-     - Devcontainerは.devcontainer/devcontainer.jsonを利用することを説明に追加
+     - 環境はこのリポジトリベースとしてDevcontainerを起動させた状態とし、実装はsrc配下に構築。
+     - Devcontainerは.devcontainer/devcontainer.jsonを利用することにし、説明だけに留める
    - 各実装ステップの解説を追加
    - トラブルシューティングガイドの作成
 
