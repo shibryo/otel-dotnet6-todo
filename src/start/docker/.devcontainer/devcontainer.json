@@ -1,0 +1,22 @@
+{
+  "name": "OpenTelemetry Todo App",
+  "dockerFile": "Dockerfile",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.dotnet-interactive-vscode",
+        "formulahendry.dotnet-test-explorer",
+        "eamodio.gitlens",
+        "yzhang.markdown-all-in-one"
+      ],
+      "settings": {
+        "omnisharp.enableRoslynAnalyzers": true,
+        "omnisharp.enableEditorConfigSupport": true
+      }
+    }
+  },
+  "forwardPorts": [5000, 5001],
+  "postCreateCommand": "dotnet restore",
+  "remoteUser": "vscode"
+}
