@@ -69,6 +69,7 @@ services:
       - "14250:14250"  # Model
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_OTLP_GRPC_PORT=4317
 
   prometheus:
     image: prom/prometheus:v2.45.0
