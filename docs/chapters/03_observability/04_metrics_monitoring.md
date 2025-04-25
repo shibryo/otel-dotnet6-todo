@@ -1,88 +1,12 @@
-# 高度な監視と運用
+# メトリクス監視とアラート設定
 
 ## 概要
 
-この章では、OpenTelemetryを使用した高度な監視と運用方法について説明します。サンプリング設定の最適化、カスタムメトリクスの効果的な実装、エラーハンドリング、そしてパフォーマンス分析の実践的な手法を学びます。
+この章では、OpenTelemetryを使用したメトリクス監視とアラート設定について説明します。カスタムメトリクスの実装、パフォーマンスメトリクスの収集、効果的なアラート設定の方法を学びます。
 
-## 1. サンプリング設定の最適化
+## 1. カスタムメトリクスの実装
 
-### カスタムサンプリングプロセッサの実装
-
-```csharp
-public class TodoSamplingProcessor : BaseProcessor<Activity>
-{
-    private readonly double _defaultSamplingRatio;
-    private readonly HashSet<string> _importantEndpoints;
-
-    public TodoSamplingProcessor(double defaultSamplingRatio = 0.1)
-    {
-        _defaultSamplingRatio = defaultSamplingRatio;
-        _importantEndpoints = new HashSet<string>
-        {
-            "/api/TodoItems/Create",
-            "/api/TodoItems/Delete"
-        };
-    }
-
-    public override void OnStart(Activity activity)
-    {
-        if (activity == null) return;
-
-        // 重要なエンドポイントは常にサンプリング
-        if (IsImportantEndpoint(activity))
-        {
-            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-            return;
-        }
-
-        // エラーが発生した場合は常にサンプリング
-        if (HasError(activity))
-        {
-            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-            return;
-        }
-
-        // その他のケースではデフォルトのサンプリング比率を適用
-        if (Random.Shared.NextDouble() < _defaultSamplingRatio)
-        {
-            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-        }
-        else
-        {
-            activity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
-        }
-    }
-}
-```
-
-### サンプリング戦略のベストプラクティス
-
-1. 環境に応じたサンプリング率の調整
-   ```csharp
-   services.AddOpenTelemetry()
-       .WithTracing(builder =>
-       {
-           var samplingRatio = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
-               ? 1.0  // 開発環境では100%サンプリング
-               : 0.1; // 本番環境では10%サンプリング
-
-           builder.AddProcessor(new TodoSamplingProcessor(samplingRatio));
-       });
-   ```
-
-2. 重要度に基づくサンプリング
-   - 重要な操作（作成・削除）は常にサンプリング
-   - エラー発生時は常にサンプリング
-   - その他の操作は設定された比率でサンプリング
-
-3. パフォーマンスへの配慮
-   - サンプリング判定の軽量化
-   - キャッシュの活用
-   - 早期リターンの実装
-
-## 2. 高度なメトリクス実装
-
-### カスタムメトリクスの設計
+### メトリクスの設計
 
 ```csharp
 public class TodoMetrics
@@ -118,9 +42,9 @@ public class TodoMetrics
 }
 ```
 
-### メトリクスの効果的な活用
+### メトリクスの収集
 
-1. ビジネスメトリクスの収集
+1. ビジネスメトリクス
    ```csharp
    public void TodoCompleted(DateTime createdAt, string priority = "normal")
    {
@@ -132,7 +56,7 @@ public class TodoMetrics
    }
    ```
 
-2. パフォーマンスメトリクスの収集
+2. パフォーマンスメトリクス
    ```csharp
    public void RecordApiResponseTime(double milliseconds, string operation)
    {
@@ -144,7 +68,7 @@ public class TodoMetrics
    }
    ```
 
-3. エラーメトリクスの収集
+3. エラーメトリクス
    ```csharp
    public void RecordOperationError(string operation, string errorType)
    {
@@ -157,71 +81,58 @@ public class TodoMetrics
    }
    ```
 
-## 3. エラーハンドリングの改善
+## 2. アラート設定
 
-### グローバルエラーハンドリング
+### Prometheusアラートルール
 
-```csharp
-public class GlobalExceptionHandler : IExceptionHandler
-{
-    private readonly ILogger<GlobalExceptionHandler> _logger;
-    private readonly TodoMetrics _metrics;
+```yaml
+groups:
+- name: todo_alerts
+  rules:
+  # エラー率アラート
+  - alert: HighErrorRate
+    expr: rate(todo_operation_errors_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "高いエラー率を検出"
+      description: "直近5分間のエラー率が10%を超えています"
 
-    public async ValueTask<bool> TryHandleAsync(
-        HttpContext context,
-        Exception exception,
-        CancellationToken cancellationToken)
-    {
-        var errorType = exception switch
-        {
-            ValidationException => "validation_error",
-            DbUpdateException => "database_error",
-            _ => "unknown_error"
-        };
+  # レスポンスタイムアラート
+  - alert: HighResponseTime
+    expr: histogram_quantile(0.95, rate(todo_api_response_time_bucket[5m])) > 500
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "高いレスポンスタイムを検出"
+      description: "p95レスポンスタイムが500msを超えています"
 
-        _metrics.RecordOperationError(
-            context.Request.Path,
-            errorType);
-
-        _logger.LogError(exception, 
-            "Error processing request: {Path}",
-            context.Request.Path);
-
-        return true;
-    }
-}
+  # データベースエラーアラート
+  - alert: DatabaseErrors
+    expr: increase(todo_operation_errors_total{error_type="database_error"}[5m]) > 5
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "データベースエラーの増加"
+      description: "5分間で5件以上のデータベースエラーが発生"
 ```
 
-### エラー監視とアラート設定
+### モニタリングダッシュボード
 
-1. Prometheusアラートルール
-   ```yaml
-   groups:
-   - name: todo_alerts
-     rules:
-     - alert: HighErrorRate
-       expr: rate(todo_operation_errors_total[5m]) > 0.1
-       for: 5m
-       labels:
-         severity: warning
-       annotations:
-         summary: "High error rate detected"
-         description: "Error rate is above 10% for 5 minutes"
-   ```
+```mermaid
+graph TB
+    A[パフォーマンス監視] --> B[レスポンスタイム]
+    A --> C[エラー率]
+    B --> D[API別レイテンシ]
+    B --> E[DB操作時間]
+    C --> F[エラータイプ別]
+    C --> G[エンドポイント別]
+```
 
-2. エラーパターンの分析
-   ```sql
-   SELECT
-     error_type,
-     COUNT(*) as error_count,
-     AVG(duration) as avg_duration
-   FROM todo_errors
-   GROUP BY error_type
-   ORDER BY error_count DESC
-   LIMIT 10;
-   ```
-
-## 4. パフォーマンス分析
+## 3. パフォーマンス分析
 
 ### レスポンスタイムの監視
 
@@ -249,43 +160,52 @@ public class GlobalExceptionHandler : IExceptionHandler
    dotnet_total_memory_bytes{job="todoapi"}
    ```
 
-### パフォーマンス最適化のヒント
+## 4. パフォーマンス最適化のヒント
 
-1. データベースクエリの最適化
+### データベース最適化
+
+1. クエリパフォーマンス
    - インデックスの適切な使用
    - N+1問題の回避
-   - クエリパフォーマンスの監視
+   - クエリの実行計画確認
 
-2. キャッシュ戦略
-   - 適切なキャッシュ期間の設定
-   - キャッシュヒット率の監視
-   - メモリ使用量の管理
+2. 接続管理
+   - コネクションプールの設定
+   - トランザクション範囲の最適化
+   - デッドロック監視
+
+### APIパフォーマンス
+
+1. キャッシュ戦略
+   - レスポンスキャッシュの活用
+   - データキャッシュの設定
+   - 分散キャッシュの検討
+
+2. 非同期処理
+   - 長時間処理の非同期化
+   - バッチ処理の最適化
+   - バックグラウンドジョブの活用
 
 ## まとめ
 
-1. サンプリング設定
-   - 環境に応じた適切なサンプリング率
-   - 重要な操作の優先サンプリング
-   - パフォーマンスへの配慮
+1. メトリクス実装
+   - カスタムメトリクスの設計
+   - 効果的なメトリクス収集
+   - メトリクスの種類と使い分け
 
-2. メトリクス実装
-   - ビジネスメトリクスの収集
-   - パフォーマンスメトリクスの監視
-   - エラーメトリクスの追跡
+2. アラート設定
+   - アラートルールの設計
+   - 重要度の設定
+   - 通知設定の最適化
 
-3. エラーハンドリング
-   - グローバルエラーハンドリング
-   - エラーパターンの分析
-   - アラート設定
-
-4. パフォーマンス分析
+3. パフォーマンス分析
    - レスポンスタイムの監視
-   - リソース使用率の追跡
-   - 最適化のベストプラクティス
+   - リソース使用率の分析
+   - 最適化の実践
 
 ## 次のステップ
 
 - カスタムエクスポーターの実装
-- 大規模システムでのトレース戦略
-- アラート設定とインシデント管理
-- パフォーマンスチューニング手法
+- 大規模システムでのメトリクス戦略
+- アラート設定の高度な活用
+- パフォーマンスチューニングの深掘り

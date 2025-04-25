@@ -1,8 +1,8 @@
-# トレース可視化とサンプリング設定
+# トレース可視化とサンプリング
 
 ## 概要
 
-この章では、分散トレーシングの可視化とサンプリング設定の最適化について説明します。Jaegerを使用したトレースの可視化、効果的なサンプリング戦略の実装、そしてパフォーマンスとの両立方法を学びます。
+この章では、Jaegerを使用した分散トレーシングの可視化とサンプリング設定の基本について説明します。トレースの可視化、基本的なサンプリング設定、そしてトレース分析の基礎を学びます。
 
 ## 1. トレース可視化の基本
 
@@ -33,178 +33,50 @@ services:
     B -->|SpanId: 4| E[External API]
    ```
 
-## 2. サンプリング設定の最適化
+## 2. 基本的なサンプリング設定
 
-### カスタムサンプリングプロセッサの実装
+### 環境別サンプリング設定
 
 ```csharp
-public class TodoSamplingProcessor : BaseProcessor<Activity>
+public static class OpenTelemetryConfig
 {
-    private readonly double _defaultSamplingRatio;
-    private readonly HashSet<string> _importantEndpoints;
-
-    public TodoSamplingProcessor(double defaultSamplingRatio = 0.1)
+    public static IServiceCollection AddCustomTracing(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        _defaultSamplingRatio = defaultSamplingRatio;
-        _importantEndpoints = new HashSet<string>
-        {
-            "/api/TodoItems/Create",
-            "/api/TodoItems/Delete"
-        };
+        return services.AddOpenTelemetry()
+            .WithTracing(builder =>
+            {
+                // 環境に応じたサンプリング率の設定
+                var samplingRatio = GetEnvironmentSamplingRatio(configuration);
+                builder.AddProcessor(new TodoSamplingProcessor(samplingRatio));
+            });
     }
 
-    public override void OnStart(Activity activity)
+    private static double GetEnvironmentSamplingRatio(IConfiguration configuration)
     {
-        if (activity == null) return;
-
-        // 重要なエンドポイントは常にサンプリング
-        if (IsImportantEndpoint(activity))
+        var environment = configuration["ASPNETCORE_ENVIRONMENT"];
+        return environment switch
         {
-            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-            return;
-        }
-
-        // エラー発生時は常にサンプリング
-        if (HasError(activity))
-        {
-            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-            return;
-        }
-
-        // その他は設定された比率でサンプリング
-        if (Random.Shared.NextDouble() < _defaultSamplingRatio)
-        {
-            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-        }
-        else
-        {
-            activity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
-        }
+            "Development" => 1.0,  // 開発環境は100%
+            "Staging" => 0.5,      // ステージング環境は50%
+            "Production" => 0.1,   // 本番環境は10%
+            _ => 0.1
+        };
     }
 }
 ```
 
-### サンプリング戦略の設計
+## 3. トレース分析の基本
 
-1. 環境別サンプリング設定
-   ```csharp
-   public static class OpenTelemetryConfig
-   {
-       public static IServiceCollection AddCustomTracing(
-           this IServiceCollection services,
-           IConfiguration configuration)
-       {
-           return services.AddOpenTelemetry()
-               .WithTracing(builder =>
-               {
-                   // 環境に応じたサンプリング率の設定
-                   var samplingRatio = GetEnvironmentSamplingRatio(configuration);
-                   builder.AddProcessor(new TodoSamplingProcessor(samplingRatio));
-               });
-       }
-
-       private static double GetEnvironmentSamplingRatio(IConfiguration configuration)
-       {
-           var environment = configuration["ASPNETCORE_ENVIRONMENT"];
-           return environment switch
-           {
-               "Development" => 1.0,  // 開発環境は100%
-               "Staging" => 0.5,      // ステージング環境は50%
-               "Production" => 0.1,   // 本番環境は10%
-               _ => 0.1
-           };
-       }
-   }
-   ```
-
-2. 重要度に基づくサンプリング
-   ```csharp
-   public static class SamplingPolicy
-   {
-       // 常にサンプリングする重要な操作を定義
-       public static readonly HashSet<string> CriticalOperations = new()
-       {
-           "Create",
-           "Delete",
-           "Error"
-       };
-
-       // 重要度に応じたサンプリング率の定義
-       public static readonly Dictionary<string, double> OperationRates = new()
-       {
-           ["High"] = 1.0,    // 重要度高：100%
-           ["Medium"] = 0.5,  // 重要度中：50%
-           ["Low"] = 0.1      // 重要度低：10%
-       };
-   }
-   ```
-
-### パフォーマンスの最適化
-
-1. サンプリング判定の最適化
-   ```csharp
-   public class OptimizedSamplingProcessor : BaseProcessor<Activity>
-   {
-       private readonly ConcurrentDictionary<string, bool> _endpointCache;
-       
-       public override void OnStart(Activity activity)
-       {
-           // キャッシュを使用してエンドポイントの判定を高速化
-           var endpoint = activity.GetTagItem("http.route") as string;
-           if (string.IsNullOrEmpty(endpoint)) return;
-
-           var shouldSample = _endpointCache.GetOrAdd(endpoint, path =>
-           {
-               // 初回のみ詳細な判定を実行
-               return IsImportantEndpoint(path) || 
-                      ShouldSampleByPriority(path);
-           });
-
-           if (shouldSample)
-           {
-               activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
-           }
-       }
-   }
-   ```
-
-2. メモリ使用量の最適化
-   ```csharp
-   public class MemoryOptimizedSampler
-   {
-       private readonly int _maxCacheSize;
-       private readonly ConcurrentDictionary<string, bool> _cache;
-
-       public MemoryOptimizedSampler(int maxCacheSize = 1000)
-       {
-           _maxCacheSize = maxCacheSize;
-           _cache = new ConcurrentDictionary<string, bool>();
-       }
-
-       public void TrimCache()
-       {
-           // キャッシュサイズが上限を超えた場合、古いエントリを削除
-           while (_cache.Count > _maxCacheSize)
-           {
-               _cache.TryRemove(
-                   _cache.OrderBy(x => x.Value).First().Key,
-                   out _);
-           }
-       }
-   }
-   ```
-
-## 3. トレース分析とモニタリング
-
-### トレース分析のベストプラクティス
+### トレース分析のポイント
 
 1. エンドポイント別の分析
    ```sql
    SELECT
      "http.route" as endpoint,
      COUNT(*) as request_count,
-     AVG(duration) as avg_duration,
-     MAX(duration) as max_duration
+     AVG(duration) as avg_duration
    FROM traces
    GROUP BY "http.route"
    ORDER BY request_count DESC
@@ -215,77 +87,71 @@ public class TodoSamplingProcessor : BaseProcessor<Activity>
    ```sql
    SELECT
      error_type,
-     COUNT(*) as error_count,
-     AVG(duration) as avg_duration
+     COUNT(*) as error_count
    FROM traces
    WHERE has_error = true
    GROUP BY error_type
    ORDER BY error_count DESC;
    ```
 
-### モニタリングダッシュボード
+### 基本的なモニタリング
 
 ```mermaid
 graph TB
     A[トレース概要] --> B[サンプリング率]
     A --> C[エラー率]
     B --> D[環境別]
-    B --> E[操作別]
     C --> F[重要度別]
-    C --> G[エンドポイント別]
 ```
 
 ## 4. トラブルシューティング
 
 ### よくある問題と解決策
 
-1. サンプリング率が低すぎる
+1. トレースが表示されない
    ```plaintext
-   症状：重要なトレースが記録されていない
-   対策：
-   - 重要な操作のリストを見直す
-   - サンプリング率の閾値を調整する
-   - エラー時の強制サンプリングを確認
+   確認項目：
+   - サンプリング設定
+   - Jaegerの接続設定
+   - アクティビティソースの設定
    ```
 
-2. パフォーマンス影響が大きい
+2. トレース情報が不完全
    ```plaintext
-   症状：サンプリング処理がレイテンシに影響
-   対策：
-   - キャッシュの活用
-   - 早期リターンの実装
-   - 判定ロジックの軽量化
+   確認項目：
+   - SpanのContext伝搬
+   - タグの設定
+   - Attributeの設定
    ```
 
-3. メモリ使用量の増加
+3. パフォーマンスの問題
    ```plaintext
-   症状：サンプリングプロセッサのメモリ使用量が増加
-   対策：
-   - キャッシュサイズの制限
-   - 定期的なキャッシュクリーンアップ
-   - メモリ使用量の監視
+   確認項目：
+   - サンプリング率の調整
+   - バッチ処理の設定
+   - Collectorの設定
    ```
 
 ## まとめ
 
 1. トレース可視化
-   - Jaegerの効果的な利用
-   - トレース情報の解析方法
-   - 可視化ダッシュボードの活用
+   - Jaegerの基本的な使用方法
+   - トレース情報の読み方
+   - 基本的な分析手法
 
 2. サンプリング設定
-   - 環境に応じた適切な設定
-   - 重要度に基づく戦略
-   - パフォーマンスとの両立
+   - 環境に応じた基本設定
+   - サンプリング率の考え方
+   - 基本的な調整方法
 
 3. 運用管理
-   - 継続的なモニタリング
+   - 基本的なモニタリング
    - トラブルシューティング手順
-   - パフォーマンス最適化
+   - 設定の最適化
 
 ## 次のステップ
 
-次章では、メトリクスの監視とアラート設定について学んでいきます。特に：
+次章では、メトリクスの監視とアラート設定について学びます。特に：
 
 - カスタムメトリクスの実装
 - アラートルールの設定
