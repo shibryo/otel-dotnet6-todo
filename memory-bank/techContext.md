@@ -35,18 +35,16 @@
 ### コンテナ化環境
 
 - Dev Container
-  - .NET 6 SDK
-  - PostgreSQL 15
+  - mcr.microsoft.com/devcontainers/dotnet:6.0
   - 開発ツール一式
 
 ### ローカル開発ツール
 
 - Tilt
-  - ローカル開発環境のオーケストレーション
+
+  - Docker compose のオーケストレーション
   - ホットリロード対応
   - マルチコンテナ管理
-
-### Docker 環境
 
 - Docker Compose
   - アプリケーションサービス
