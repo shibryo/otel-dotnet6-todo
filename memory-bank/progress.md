@@ -7,9 +7,10 @@
 - [x] プロジェクト構造の作成
 - [x] Memory Bank の設定
 - [x] Dev Container 環境の構築
-- [ ] .NET 6 WebAPI プロジェクトの作成
-- [ ] Entity Framework Core の設定
-- [ ] PostgreSQL の設定
+- [x] .NET 6 WebAPI プロジェクトの作成
+- [x] Entity Framework Core の設定
+- [x] PostgreSQL の設定
+- [ ] データベースマイグレーションの実行
 - [ ] React フロントエンドの作成
 
 ### 第 2 章: OpenTelemetry の導入
@@ -37,23 +38,23 @@
 
 ### アクティブタスク
 
-1. Dev Container 環境の構築
-   - [x] devcontainer.json の作成
-   - [x] Dockerfile の作成
-   - [x] Docker Compose の設定
+1. データベースの設定
+   - [x] マイグレーションの作成
+   - [ ] マイグレーションの実行
+   - [ ] 接続テスト
 
 ### 次のタスク
 
-1. バックエンド開発環境の設定
+1. フロントエンド開発環境の設定
 
-   - [ ] .NET 6 プロジェクトの作成
-   - [ ] 依存関係の設定
-   - [ ] 開発用データベースの設定
-
-2. フロントエンド開発環境の設定
    - [ ] React プロジェクトの作成
    - [ ] 開発サーバーの設定
-   - [ ] ビルド設定の調整
+   - [ ] API クライアントの実装
+
+2. API エンドポイントのテスト
+   - [ ] Swagger による動作確認
+   - [ ] CRUD テストの実行
+   - [ ] エラーハンドリングの確認
 
 ## 課題管理
 

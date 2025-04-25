@@ -5,7 +5,7 @@
 ### 実装フェーズ
 
 - 第 1 章：環境構築と Todo アプリの基本実装
-- フェーズ：初期セットアップ
+- フェーズ：バックエンド実装
 
 ### 完了したタスク
 
@@ -14,22 +14,30 @@
    - ディレクトリ構造の整備
    - Memory Bank の初期設定
 
-2. Dev Container の設定開始
+2. Dev Container の設定完了
+
    - devcontainer.json の作成
    - 開発環境の基本設定
 
+3. WebAPI プロジェクトの初期化
+   - [x] .NET 6 WebAPI プロジェクトの作成
+   - [x] Entity Framework Core のセットアップ
+   - [x] TodoItem モデルの作成
+   - [x] DbContext の設定
+   - [x] CRUD コントローラーの実装
+
 ### 進行中のタスク
 
-1. 開発環境のセットアップ
+1. データベースのセットアップ
 
-   - [x] Dockerfile の作成
-   - [x] Docker Compose の設定
-   - [x] PostgreSQL の設定
+   - [x] マイグレーションの作成
+   - [ ] マイグレーションの実行
+   - [ ] データベース接続の確認
 
-2. プロジェクトの初期化
-   - [ ] .NET 6 WebAPI プロジェクトの作成
-   - [ ] Entity Framework Core のセットアップ
-   - [ ] 最小限の React フロントエンドの作成
+2. React フロントエンド
+   - [ ] プロジェクトの作成
+   - [ ] コンポーネントの実装
+   - [ ] API 連携の実装
 
 ## 実装状態
 

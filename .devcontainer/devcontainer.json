@@ -1,6 +1,11 @@
 {
   "name": "OpenTelemetry Todo App",
-  "dockerFile": "Dockerfile",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:6.0",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,6 +22,10 @@
     }
   },
   "forwardPorts": [5000, 5001],
-  "postCreateCommand": "dotnet restore",
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ],
+  "workspaceFolder": "/workspace",
+  "runArgs": ["--network=host"]
 }
