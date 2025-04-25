@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.Metrics;
+using TodoApi.Sampling;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
@@ -22,6 +23,8 @@ builder.Services.AddOpenTelemetry()
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             .AddEntityFrameworkCoreInstrumentation()
+            .AddProcessor(new TodoSamplingProcessor(
+                defaultSamplingRatio: builder.Environment.IsDevelopment() ? 1.0 : 0.1))
             .AddConsoleExporter()
             .AddOtlpExporter(opts => {
                 opts.Endpoint = new Uri("http://otel-collector:4317");
