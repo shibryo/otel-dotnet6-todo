@@ -1,12 +1,88 @@
-# メトリクス監視の実装
+# 高度な監視と運用
 
 ## 概要
 
-この章では、TodoアプリケーションのメトリクスをPrometheusで収集し、Grafanaで可視化する方法について説明します。カスタムメトリクスの実装からダッシュボードの作成まで、段階的に解説します。
+この章では、OpenTelemetryを使用した高度な監視と運用方法について説明します。サンプリング設定の最適化、カスタムメトリクスの効果的な実装、エラーハンドリング、そしてパフォーマンス分析の実践的な手法を学びます。
 
-## メトリクスの実装
+## 1. サンプリング設定の最適化
 
-Todoアプリケーションでは、以下のカスタムメトリクスを実装しています：
+### カスタムサンプリングプロセッサの実装
+
+```csharp
+public class TodoSamplingProcessor : BaseProcessor<Activity>
+{
+    private readonly double _defaultSamplingRatio;
+    private readonly HashSet<string> _importantEndpoints;
+
+    public TodoSamplingProcessor(double defaultSamplingRatio = 0.1)
+    {
+        _defaultSamplingRatio = defaultSamplingRatio;
+        _importantEndpoints = new HashSet<string>
+        {
+            "/api/TodoItems/Create",
+            "/api/TodoItems/Delete"
+        };
+    }
+
+    public override void OnStart(Activity activity)
+    {
+        if (activity == null) return;
+
+        // 重要なエンドポイントは常にサンプリング
+        if (IsImportantEndpoint(activity))
+        {
+            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+            return;
+        }
+
+        // エラーが発生した場合は常にサンプリング
+        if (HasError(activity))
+        {
+            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+            return;
+        }
+
+        // その他のケースではデフォルトのサンプリング比率を適用
+        if (Random.Shared.NextDouble() < _defaultSamplingRatio)
+        {
+            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+        }
+        else
+        {
+            activity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
+        }
+    }
+}
+```
+
+### サンプリング戦略のベストプラクティス
+
+1. 環境に応じたサンプリング率の調整
+   ```csharp
+   services.AddOpenTelemetry()
+       .WithTracing(builder =>
+       {
+           var samplingRatio = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
+               ? 1.0  // 開発環境では100%サンプリング
+               : 0.1; // 本番環境では10%サンプリング
+
+           builder.AddProcessor(new TodoSamplingProcessor(samplingRatio));
+       });
+   ```
+
+2. 重要度に基づくサンプリング
+   - 重要な操作（作成・削除）は常にサンプリング
+   - エラー発生時は常にサンプリング
+   - その他の操作は設定された比率でサンプリング
+
+3. パフォーマンスへの配慮
+   - サンプリング判定の軽量化
+   - キャッシュの活用
+   - 早期リターンの実装
+
+## 2. 高度なメトリクス実装
+
+### カスタムメトリクスの設計
 
 ```csharp
 public class TodoMetrics
@@ -17,248 +93,199 @@ public class TodoMetrics
     private readonly Histogram<double> _todoCompletionTimeHistogram;
     private readonly Counter<int> _todoOperationErrorCounter;
     private readonly Histogram<double> _apiResponseTimeHistogram;
-    private readonly Counter<int> _todoOperationCounter;
 
     public TodoMetrics()
     {
-        _meter = new Meter("TodoApi");
+        var meter = new Meter("TodoApi");
         
-        // カウンター系メトリクス
-        _todosCreatedCounter = _meter.CreateCounter<int>(
-            "todo.created",
-            description: "Number of todo items created");
-
-        _todosCompletedCounter = _meter.CreateCounter<int>(
-            "todo.completed",
-            description: "Number of todo items marked as complete");
-
-        // UpDownカウンター
-        _activeTodosCounter = _meter.CreateUpDownCounter<int>(
-            "todo.active",
-            description: "Number of active (incomplete) todo items");
-
-        // ヒストグラム
-        _todoCompletionTimeHistogram = _meter.CreateHistogram<double>(
+        // 基本的なメトリクス
+        _todosCreatedCounter = meter.CreateCounter<int>("todo.created");
+        _todosCompletedCounter = meter.CreateCounter<int>("todo.completed");
+        _activeTodosCounter = meter.CreateUpDownCounter<int>("todo.active");
+        
+        // パフォーマンスメトリクス
+        _todoCompletionTimeHistogram = meter.CreateHistogram<double>(
             "todo.completion_time",
-            unit: "ms",
-            description: "Time taken to complete todo items");
+            unit: "ms");
+        _apiResponseTimeHistogram = meter.CreateHistogram<double>(
+            "todo.api.response_time",
+            unit: "ms");
+        
+        // エラーメトリクス
+        _todoOperationErrorCounter = meter.CreateCounter<int>(
+            "todo.operation.errors");
     }
 }
 ```
 
-### メトリクスの種類
+### メトリクスの効果的な活用
 
-1. カウンター系
-   - todo.created: 作成されたTodoの数
-   - todo.completed: 完了したTodoの数
-   - todo.operation.errors: エラーの発生数
-   - todo.operation.count: 操作の実行数
-
-2. UpDownカウンター
-   - todo.active: アクティブなTodoの数
-
-3. ヒストグラム
-   - todo.completion_time: Todo完了までの時間
-   - todo.api.response_time: APIレスポンス時間
-
-## Prometheusの設定
-
-### スクレイピング設定
-
-```yaml
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'otel-collector'
-    static_configs:
-      - targets: ['otel-collector:8889']
-
-  - job_name: 'todo-api'
-    static_configs:
-      - targets: ['todo-api:5000']
-```
-
-### メトリクスの確認
-
-1. Prometheus UI（http://localhost:9090）にアクセス
-2. Graph画面でメトリクスを検索
-3. PromQLクエリの例：
-   ```
-   # 直近1時間のTodo作成数
-   rate(todo_created_total[1h])
-
-   # アクティブなTodoの数
-   todo_active
-
-   # 90パーセンタイルの完了時間
-   histogram_quantile(0.9, rate(todo_completion_time_bucket[5m]))
+1. ビジネスメトリクスの収集
+   ```csharp
+   public void TodoCompleted(DateTime createdAt, string priority = "normal")
+   {
+       _todosCompletedCounter.Add(1);
+       _activeTodosCounter.Add(-1);
+       
+       var completionTime = (DateTime.UtcNow - createdAt).TotalMilliseconds;
+       _todoCompletionTimeHistogram.Record(completionTime);
+   }
    ```
 
-## Grafanaダッシュボード
+2. パフォーマンスメトリクスの収集
+   ```csharp
+   public void RecordApiResponseTime(double milliseconds, string operation)
+   {
+       _apiResponseTimeHistogram.Record(milliseconds, 
+           new KeyValuePair<string, object>[] 
+           {
+               new("operation", operation)
+           });
+   }
+   ```
 
-### データソースの設定
+3. エラーメトリクスの収集
+   ```csharp
+   public void RecordOperationError(string operation, string errorType)
+   {
+       _todoOperationErrorCounter.Add(1, 
+           new KeyValuePair<string, object>[] 
+           {
+               new("operation", operation),
+               new("error_type", errorType)
+           });
+   }
+   ```
 
-1. Grafana（http://localhost:3001）にアクセス
-2. Configuration > Data Sources
-3. Add data source
-4. Prometheusを選択
-   - URL: http://prometheus:9090
-   - Access: Server（default）
+## 3. エラーハンドリングの改善
 
-### ダッシュボードの作成
+### グローバルエラーハンドリング
 
-#### 1. オペレーション概要
-
-```mermaid
-graph TD
-    A[Operations Dashboard]
-    A --> B[Todo作成数]
-    A --> C[完了数]
-    A --> D[アクティブ数]
-    A --> E[エラー率]
-```
-
-```json
+```csharp
+public class GlobalExceptionHandler : IExceptionHandler
 {
-  "panels": [
+    private readonly ILogger<GlobalExceptionHandler> _logger;
+    private readonly TodoMetrics _metrics;
+
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext context,
+        Exception exception,
+        CancellationToken cancellationToken)
     {
-      "title": "Todo作成数（時間毎）",
-      "type": "graph",
-      "targets": [
+        var errorType = exception switch
         {
-          "expr": "rate(todo_created_total[1h])"
-        }
-      ]
-    },
-    {
-      "title": "アクティブなTodo数",
-      "type": "gauge",
-      "targets": [
-        {
-          "expr": "todo_active"
-        }
-      ]
+            ValidationException => "validation_error",
+            DbUpdateException => "database_error",
+            _ => "unknown_error"
+        };
+
+        _metrics.RecordOperationError(
+            context.Request.Path,
+            errorType);
+
+        _logger.LogError(exception, 
+            "Error processing request: {Path}",
+            context.Request.Path);
+
+        return true;
     }
-  ]
 }
 ```
 
-#### 2. パフォーマンスダッシュボード
+### エラー監視とアラート設定
 
-1. レスポンスタイム
-   ```json
-   {
-     "title": "APIレスポンスタイム",
-     "type": "heatmap",
-     "targets": [
-       {
-         "expr": "rate(todo_api_response_time_bucket[5m])"
-       }
-     ]
-   }
+1. Prometheusアラートルール
+   ```yaml
+   groups:
+   - name: todo_alerts
+     rules:
+     - alert: HighErrorRate
+       expr: rate(todo_operation_errors_total[5m]) > 0.1
+       for: 5m
+       labels:
+         severity: warning
+       annotations:
+         summary: "High error rate detected"
+         description: "Error rate is above 10% for 5 minutes"
    ```
 
-2. 完了時間分布
-   ```json
-   {
-     "title": "Todo完了時間分布",
-     "type": "histogram",
-     "targets": [
-       {
-         "expr": "todo_completion_time_bucket"
-       }
-     ]
-   }
+2. エラーパターンの分析
+   ```sql
+   SELECT
+     error_type,
+     COUNT(*) as error_count,
+     AVG(duration) as avg_duration
+   FROM todo_errors
+   GROUP BY error_type
+   ORDER BY error_count DESC
+   LIMIT 10;
    ```
 
-### アラート設定
+## 4. パフォーマンス分析
 
-1. エラー率アラート
-```yaml
-alert: HighErrorRate
-expr: rate(todo_operation_errors_total[5m]) > 0.1
-for: 5m
-labels:
-  severity: warning
-annotations:
-  summary: High error rate detected
-  description: Error rate is above 10% for the last 5 minutes
-```
+### レスポンスタイムの監視
 
-2. レイテンシアラート
-```yaml
-alert: HighLatency
-expr: histogram_quantile(0.95, rate(todo_api_response_time_bucket[5m])) > 500
-for: 5m
-labels:
-  severity: warning
-annotations:
-  summary: High API latency detected
-  description: 95th percentile latency is above 500ms
-```
+1. p95/p99レイテンシの計測
+   ```promql
+   histogram_quantile(0.95, 
+     sum(rate(todo_api_response_time_bucket[5m])) by (le, operation))
+   ```
 
-## ダッシュボードのベストプラクティス
+2. レイテンシのトレンド分析
+   ```promql
+   rate(todo_api_response_time_sum[1h]) / 
+   rate(todo_api_response_time_count[1h])
+   ```
 
-### 1. 構造化
+### リソース使用率の監視
 
-1. Overview
-   - 主要KPIの表示
-   - 異常値の即時検出
-   - トレンドの可視化
+1. メモリ使用率
+   ```promql
+   process_working_set_bytes{job="todoapi"}
+   ```
 
-2. 詳細ビュー
-   - 操作種別ごとの統計
-   - エラー分析
-   - パフォーマンス指標
+2. GCメトリクス
+   ```promql
+   dotnet_total_memory_bytes{job="todoapi"}
+   ```
 
-### 2. 可視化の選択
+### パフォーマンス最適化のヒント
 
-1. 時系列データ
-   - Graph: トレンド表示
-   - Heatmap: 分布の変化
+1. データベースクエリの最適化
+   - インデックスの適切な使用
+   - N+1問題の回避
+   - クエリパフォーマンスの監視
 
-2. 現在値
-   - Gauge: 範囲内の値
-   - Stat: 単一の値
-
-3. 複合データ
-   - Table: 詳細な値
-   - Bar chart: 比較
-
-## トラブルシューティング
-
-### よくある問題と解決方法
-
-1. メトリクスが収集されない
-   - スクレイピング設定の確認
-   - エンドポイントの接続確認
-   - メトリクス名の確認
-
-2. グラフが表示されない
-   - PromQLクエリの確認
-   - データ範囲の確認
-   - 単位の確認
-
-3. アラートが機能しない
-   - 評価間隔の確認
-   - 条件式の確認
-   - 通知設定の確認
+2. キャッシュ戦略
+   - 適切なキャッシュ期間の設定
+   - キャッシュヒット率の監視
+   - メモリ使用量の管理
 
 ## まとめ
 
-1. メトリクスの設計
-   - ビジネス指標の選定
-   - 技術指標の選定
-   - 適切なメトリクス種別の選択
+1. サンプリング設定
+   - 環境に応じた適切なサンプリング率
+   - 重要な操作の優先サンプリング
+   - パフォーマンスへの配慮
 
-2. 監視の設計
-   - データの収集
-   - 可視化の工夫
+2. メトリクス実装
+   - ビジネスメトリクスの収集
+   - パフォーマンスメトリクスの監視
+   - エラーメトリクスの追跡
+
+3. エラーハンドリング
+   - グローバルエラーハンドリング
+   - エラーパターンの分析
    - アラート設定
 
-3. 運用の準備
-   - ドキュメント作成
-   - チーム内での共有
-   - 継続的な改善
+4. パフォーマンス分析
+   - レスポンスタイムの監視
+   - リソース使用率の追跡
+   - 最適化のベストプラクティス
+
+## 次のステップ
+
+- カスタムエクスポーターの実装
+- 大規模システムでのトレース戦略
+- アラート設定とインシデント管理
+- パフォーマンスチューニング手法

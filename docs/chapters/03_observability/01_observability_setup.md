@@ -1,169 +1,310 @@
-# 観測環境のセットアップ
+# 可観測性の基本設定
 
 ## 概要
 
-この章では、OpenTelemetryで収集したデータを可視化するための環境をDocker Composeを使用してセットアップします。各コンポーネントの役割と設定について詳しく説明します。
+この章では、OpenTelemetryを使用した可観測性の基本的な設定について説明します。システムの監視、パフォーマンス分析、トラブルシューティングに必要な基本的な概念と設定方法を学びます。
 
-## システムアーキテクチャ
+## 1. 可観測性の基本概念
 
-以下の図は、観測環境の全体構成を示しています：
+### 3つの柱
 
 ```mermaid
 graph TD
-    A[Todo API] -->|OTLP/gRPC| B[OTel Collector]
-    B -->|OTLP| C[Jaeger]
-    B -->|Metrics| D[Prometheus]
-    D -->|Data Source| E[Grafana]
-    style A fill:#d4e6ff
-    style B fill:#ffead4
-    style C fill:#d4ffd4
-    style D fill:#ffd4d4
-    style E fill:#d4ffea
+    A[可観測性] --> B[トレース]
+    A --> C[メトリクス]
+    A --> D[ログ]
+    B --> E[分散トレーシング]
+    C --> F[ビジネスメトリクス]
+    C --> G[技術メトリクス]
+    D --> H[構造化ログ]
+    D --> I[相関ログ]
 ```
 
-### コンポーネントの役割
+1. トレース
+   - リクエストの追跡
+   - 処理フローの可視化
+   - ボトルネックの特定
 
-1. OpenTelemetry Collector
-   - トレースとメトリクスの受信
-   - データの処理とフィルタリング
-   - 各バックエンドへのエクスポート
+2. メトリクス
+   - パフォーマンス測定
+   - リソース使用率
+   - ビジネス指標
 
-2. Jaeger
-   - 分散トレーシングの可視化
-   - トレースの検索と分析
-   - パフォーマンスボトルネックの特定
+3. ログ
+   - エラー情報
+   - デバッグ情報
+   - 監査ログ
 
-3. Prometheus
-   - メトリクスデータの収集
-   - 時系列データの保存
-   - クエリエンジン
+## 2. 環境構築
 
-4. Grafana
-   - メトリクスの可視化
-   - ダッシュボード作成
-   - アラート管理
-
-## Docker Compose設定
-
-### サービス構成
+### Docker Composeの設定
 
 ```yaml
+version: '3.8'
 services:
+  # OpenTelemetry Collector
   otel-collector:
-    image: otel/opentelemetry-collector:0.88.0
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    image: otel/opentelemetry-collector:latest
     volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
     ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP http receiver
-      - "8889:8889"   # Prometheus exporter
+      - "4317:4317"   # gRPC
+      - "4318:4318"   # HTTP
+      - "8889:8889"   # Prometheus Exporter
 
+  # Jaeger
   jaeger:
-    image: jaegertracing/all-in-one:1.49
+    image: jaegertracing/all-in-one:latest
     ports:
-      - "16686:16686"  # UI
-      - "14250:14250"  # Model
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+      - "16686:16686"  # Web UI
+      - "14250:14250"  # gRPC
 
+  # Prometheus
   prometheus:
-    image: prom/prometheus:v2.45.0
+    image: prom/prometheus:latest
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
 
+  # Grafana
   grafana:
-    image: grafana/grafana:10.0.3
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SECURITY_ADMIN_USER=admin
+    image: grafana/grafana:latest
     ports:
-      - "3001:3000"
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
 ```
 
-### ポート番号
+### OpenTelemetry SDKの設定
 
-| サービス | ポート | 用途 |
-|---------|--------|------|
-| OTel Collector | 4317 | OTLP/gRPC受信 |
-| OTel Collector | 4318 | OTLP/HTTP受信 |
-| OTel Collector | 8889 | Prometheusエクスポート |
-| Jaeger | 16686 | Web UI |
-| Jaeger | 14250 | モデル受信 |
-| Prometheus | 9090 | Web UI & API |
-| Grafana | 3001 | Web UI |
+```csharp
+public static class OpenTelemetryExtensions
+{
+    public static IServiceCollection AddCustomOpenTelemetry(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddOpenTelemetry()
+            .WithTracing(builder =>
+            {
+                builder
+                    .AddSource("TodoApi")
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService("TodoApi"))
+                    .AddAspNetCoreInstrumentation()
+                    .AddEntityFrameworkCoreInstrumentation()
+                    .AddOtlpExporter();
+            })
+            .WithMetrics(builder =>
+            {
+                builder
+                    .AddMeter("TodoApi")
+                    .AddAspNetCoreInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddOtlpExporter();
+            });
 
-## 環境構築手順
-
-1. プロジェクトのセットアップ
-```bash
-git clone <repository-url>
-cd <project-directory>
+        return services;
+    }
+}
 ```
 
-2. 環境の起動
-```bash
-cd src/start/docker
-docker compose up -d
+## 3. ベースラインの監視設定
+
+### メトリクスの基本設定
+
+```csharp
+public class BaselineMetrics
+{
+    private readonly Meter _meter;
+    private readonly Counter<int> _requestCounter;
+    private readonly Histogram<double> _responseTimeHistogram;
+
+    public BaselineMetrics()
+    {
+        _meter = new Meter("TodoApi.Baseline");
+        
+        _requestCounter = _meter.CreateCounter<int>(
+            "http.requests.total",
+            description: "Total number of HTTP requests");
+
+        _responseTimeHistogram = _meter.CreateHistogram<double>(
+            "http.response_time",
+            unit: "ms",
+            description: "HTTP response time");
+    }
+
+    public void RecordRequest()
+    {
+        _requestCounter.Add(1);
+    }
+
+    public void RecordResponseTime(double milliseconds)
+    {
+        _responseTimeHistogram.Record(milliseconds);
+    }
+}
 ```
 
-3. 動作確認
-   - Jaeger UI: http://localhost:16686
-   - Prometheus: http://localhost:9090
-   - Grafana: http://localhost:3001
+### トレースの基本設定
 
-## 各サービスへのアクセス方法
+```csharp
+public static class TracingConfig
+{
+    public static ActivitySource CreateActivitySource()
+    {
+        return new ActivitySource(
+            "TodoApi",
+            "1.0.0");
+    }
 
-### Jaeger UI
-
-1. ブラウザで http://localhost:16686 にアクセス
-2. Service欄から「TodoApi」を選択
-3. 検索条件を設定してトレースを表示
-
-### Prometheus
-
-1. ブラウザで http://localhost:9090 にアクセス
-2. Graph欄でメトリクスを検索
-3. 時系列データの確認
-
-### Grafana
-
-1. ブラウザで http://localhost:3001 にアクセス
-2. ログイン（初期認証情報）
-   - ユーザー名: admin
-   - パスワード: admin
-3. データソースの設定
-4. ダッシュボードの作成
-
-## トラブルシューティング
-
-### よくある問題と解決方法
-
-1. コンテナが起動しない
-```bash
-# ログの確認
-docker compose logs <service-name>
-
-# 設定ファイルの権限確認
-ls -l *.yml *.yaml
+    public static void AddBasicTags(Activity activity)
+    {
+        activity?.SetTag("service.name", "TodoApi");
+        activity?.SetTag("service.version", "1.0.0");
+        activity?.SetTag("deployment.environment",
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
+    }
+}
 ```
 
-2. データが収集されない
-- Collectorのログを確認
-- ポート番号の確認
-- ファイアウォール設定の確認
+### ログの基本設定
 
-3. UIにアクセスできない
-- コンテナの状態確認
-- ポートの重複確認
-- ホストのネットワーク設定確認
+```csharp
+public static class LoggingConfig
+{
+    public static ILoggingBuilder AddBasicLogging(
+        this ILoggingBuilder builder)
+    {
+        return builder
+            .AddJsonConsole(options =>
+            {
+                options.IncludeScopes = true;
+                options.TimestampFormat = "yyyy-MM-dd HH:mm:ss";
+                options.JsonWriterOptions = new JsonWriterOptions
+                {
+                    Indented = true
+                };
+            })
+            .AddOpenTelemetry(options =>
+            {
+                options.IncludeFormattedMessage = true;
+                options.IncludeScopes = true;
+            });
+    }
+}
+```
+
+## 4. 監視ダッシュボードの設定
+
+### Grafanaダッシュボード
+
+```mermaid
+graph TB
+    A[システム概要] --> B[アプリケーション]
+    A --> C[インフラストラクチャ]
+    B --> D[APIレスポンス]
+    B --> E[エラー率]
+    C --> F[リソース使用率]
+    C --> G[データベース]
+```
+
+### Prometheusクエリ例
+
+1. リクエスト率
+   ```promql
+   rate(http_requests_total[5m])
+   ```
+
+2. エラー率
+   ```promql
+   sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+   sum(rate(http_requests_total[5m]))
+   ```
+
+3. レスポンスタイム
+   ```promql
+   histogram_quantile(0.95, 
+     rate(http_response_time_bucket[5m]))
+   ```
+
+## 5. トラブルシューティング
+
+### よくある問題と解決策
+
+1. データが収集されない
+   ```plaintext
+   確認項目：
+   - OpenTelemetry Collectorの起動状態
+   - エンドポイントの設定
+   - ファイアウォール設定
+   ```
+
+2. トレースが表示されない
+   ```plaintext
+   確認項目：
+   - サンプリング設定
+   - Jaegerの接続設定
+   - アクティビティソースの設定
+   ```
+
+3. メトリクスが不正確
+   ```plaintext
+   確認項目：
+   - メーターの登録状態
+   - 集計期間の設定
+   - エクスポーターの設定
+   ```
+
+### ヘルスチェック
+
+```csharp
+public class HealthCheck : IHealthCheck
+{
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var isCollectorHealthy = await CheckCollectorHealth();
+        var isJaegerHealthy = await CheckJaegerHealth();
+        var isPrometheusHealthy = await CheckPrometheusHealth();
+
+        if (!isCollectorHealthy || !isJaegerHealthy || !isPrometheusHealthy)
+        {
+            return HealthCheckResult.Unhealthy(
+                "One or more monitoring components are unhealthy");
+        }
+
+        return HealthCheckResult.Healthy();
+    }
+}
+```
+
+## まとめ
+
+1. 基本概念
+   - トレース、メトリクス、ログの理解
+   - 可観測性の重要性
+   - 監視の基本戦略
+
+2. 環境設定
+   - Docker Composeの構成
+   - OpenTelemetry SDKの設定
+   - 監視ツールの統合
+
+3. 基本機能
+   - メトリクス収集
+   - トレース記録
+   - ログ管理
 
 ## 次のステップ
 
-1. [OpenTelemetry Collectorの設定](02_collector_config.md)で、データの収集と転送の詳細設定を学びます。
+次章では、OpenTelemetry Collectorの詳細な設定とエラーハンドリングについて学びます。特に：
 
-2. サービスごとの具体的な設定と使用方法は、以下の章で解説します：
-   - [トレース可視化の実装](03_trace_visualization.md)
-   - [メトリクス監視の実装](04_metrics_monitoring.md)
+- Collectorの高度な設定
+- エラー検出と記録
+- アラート設定
+
+について詳しく説明します。
