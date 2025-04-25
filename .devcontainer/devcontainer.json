@@ -22,6 +22,9 @@
       }
     }
   },
+  "postCreateCommand": {
+    "install tilt": "curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash"
+  },
   "forwardPorts": [5000, 5001, 80, 5432, 5050],
   "remoteUser": "vscode",
   "mounts": [

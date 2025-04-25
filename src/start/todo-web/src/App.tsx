@@ -1,4 +1,3 @@
-import React from 'react';
 import { Container, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { TodoList } from './components/TodoList';
 import { TodoForm } from './components/TodoForm';
