@@ -1,48 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
-using TodoApi.Metrics;
-using TodoApi.Sampling;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Register TodoMetrics as a singleton
-builder.Services.AddSingleton<TodoMetrics>();
-
-// Configure OpenTelemetry
-builder.Services.AddOpenTelemetry()
-    .WithTracing(tracerProviderBuilder =>
-    {
-        tracerProviderBuilder
-            .AddSource("TodoApi")
-            .SetResourceBuilder(
-                ResourceBuilder.CreateDefault()
-                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation()
-            .AddProcessor(new TodoSamplingProcessor(
-                defaultSamplingRatio: builder.Environment.IsDevelopment() ? 1.0 : 0.1))
-            .AddConsoleExporter()
-            .AddOtlpExporter(opts => {
-                opts.Endpoint = new Uri("http://otel-collector:4317");
-            });
-    })
-    .WithMetrics(metricsProviderBuilder =>
-    {
-        metricsProviderBuilder
-            .SetResourceBuilder(
-                ResourceBuilder.CreateDefault()
-                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddConsoleExporter()
-            .AddOtlpExporter(opts => {
-                opts.Endpoint = new Uri("http://otel-collector:4317");
-            });
-    });
 
 // Add services to the container.
 builder.Services.AddControllers();
