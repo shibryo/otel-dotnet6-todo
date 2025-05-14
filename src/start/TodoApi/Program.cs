@@ -39,4 +39,11 @@ app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 
+// データベースマイグレーションの自動適用
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TodoContext>();
+    db.Database.Migrate();
+}
+
 app.Run();
