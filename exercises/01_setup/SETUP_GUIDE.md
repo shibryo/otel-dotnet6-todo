@@ -34,10 +34,14 @@ code .
 ## 3. 開発環境の構成
 
 ### ポート設定
-- API サーバー: 5000
-- Web フロントエンド: 80
+- API サーバー: 5000 (http://localhost:5000)
+  - Swagger UI: http://localhost:5000/swagger
+  - APIエンドポイント: http://localhost:5000/api/todoitems
+- Web フロントエンド: 80 (http://localhost)
+  - Nginxリバースプロキシ経由でAPIにアクセス
+  - /api/* へのリクエストは自動的にAPIサーバーへプロキシ
 - PostgreSQL: 5432
-- pgAdmin: 5050
+- pgAdmin: 5050 (http://localhost:5050)
 
 ### 環境変数の設定
 - データベース接続情報は docker-compose.yml で設定済み
