@@ -127,11 +127,11 @@
      - [x] 高度な機能の体系的な整理
      - [x] 実装例の選定と解説
      - [x] 段階的な学習パスの設計
-   - [ ] 第4章の詳細コンテンツ作成
-     - [ ] 01_sampling_optimization.md
-     - [ ] 02_advanced_metrics.md
-     - [ ] 03_error_detection.md
-     - [ ] 04_performance_analysis.md
+   - [x] 第4章の詳細コンテンツ作成
+     - [x] 01_sampling_optimization.md
+     - [x] 02_advanced_metrics.md
+     - [x] 03_error_detection.md
+     - [x] 04_performance_analysis.md
 
 2. ベータハンズオン準備
    - [ ] 学習者の選定
@@ -151,12 +151,10 @@
 
 ### 未解決の課題
 
-1. 学習テキストの作成
-   - 第4章の詳細コンテンツ
-     - サンプリング戦略の具体例
-     - メトリクス設計のベストプラクティス
-     - エラー分析のパターン
-     - パフォーマンス最適化の手法
+1. ベータハンズオン準備
+   - 学習者の選定基準の作成
+   - フィードバック収集フォームの設計
+   - 進捗管理シートのテンプレート作成
 
 ### 解決済みの課題
 
