@@ -1,9 +1,48 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using TodoApi.Metrics;
+using System.Text.Json;
+using TodoApi.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ログ設定の追加
+builder.Services.AddLogging(logging =>
+{
+    logging.AddJsonConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.TimestampFormat = "yyyy-MM-dd HH:mm:ss";
+        options.JsonWriterOptions = new System.Text.Json.JsonWriterOptions
+        {
+            Indented = true
+        };
+        options.UseUtcTimestamp = true;
+    });
+});
+
+// OpenTelemetryの設定を追加
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =>
+        tracerProviderBuilder
+            .AddSource("TodoApi")
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService(serviceName: "TodoApi"))
+            .AddAspNetCoreInstrumentation()    // WebAPI自動計装
+            .AddEntityFrameworkCoreInstrumentation()  // EF Core自動計装
+            .AddConsoleExporter())  // デバッグ用コンソール出力
+    .WithMetrics(metricsBuilder => 
+        metricsBuilder
+            .AddMeter("TodoApi")
+            .AddConsoleExporter());
+
+
 // Add services to the container.
+builder.Services.AddSingleton<TodoMetrics>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -22,6 +61,7 @@ builder.Services.AddCors(options =>
 // Add DbContext
 builder.Services.AddDbContext<TodoContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
 var app = builder.Build();
 
