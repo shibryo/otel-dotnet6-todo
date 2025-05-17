@@ -1,398 +1,206 @@
-# 第4章：高度な機能と運用 実装アドバイス
+# 第4章：高度な機能と運用 - 実装アドバイス
 
-## サンプリング設定の実装
+## 章の学習目標
 
-### 1. 環境別サンプリング設定
+1. 運用視点での最適化
+   - パフォーマンスチューニング
+   - コスト効率の向上
+   - スケーラビリティの確保
 
+2. 高度な監視機能
+   - カスタムメトリクスの設計
+   - インテリジェントなサンプリング
+   - 効果的なアラート設定
+
+3. トラブルシューティングスキル
+   - 問題の迅速な特定
+   - 根本原因分析
+   - 予防的対策
+
+## セッション別コンテンツ
+
+### 1. サンプリング最適化
+参考資料：
+- [サンプリング戦略](https://opentelemetry.io/docs/concepts/sampling/)
+- [コスト最適化](https://opentelemetry.io/docs/instrumentation/net/using_sampling/)
+
+実装例：
 ```csharp
-public static class SamplingConfigurator
+public class AdvancedSamplingProcessor : BaseProcessor<Activity>
 {
-    public static TracerProviderBuilder ConfigureSampling(
-        this TracerProviderBuilder builder,
-        IWebHostEnvironment env)
+    private readonly HashSet<string> _criticalOperations = new()
     {
-        var samplingRate = env.IsDevelopment() ? 1.0 : 0.1;
-        
-        return builder.SetSampler(new CompositeCompositionSampler(
-            new ParentBasedSampler(
-                new TraceIdRatioBasedSampler(samplingRate)),
-            new CustomSampler(samplingRate)));
-    }
-}
+        "CreateOrder",
+        "ProcessPayment"
+    };
 
-// Program.csでの使用
-builder.Services.AddOpenTelemetry()
-    .WithTracing(builder => builder
-        .ConfigureSampling(app.Environment));
-```
-
-### 2. カスタムサンプラーの実装
-
-```csharp
-public class CustomSampler : Sampler
-{
-    private readonly double _defaultSamplingRate;
-    private readonly ISet<string> _importantOperations;
-    private readonly ISet<string> _errorTags;
-
-    public CustomSampler(double defaultSamplingRate)
+    public override void OnStart(Activity activity)
     {
-        _defaultSamplingRate = defaultSamplingRate;
-        _importantOperations = new HashSet<string> 
-        { 
-            "CreateTodoItem",
-            "DeleteTodoItem" 
-        };
-        _errorTags = new HashSet<string> 
-        { 
-            "error",
-            "exception" 
-        };
-    }
-
-    public override SamplingResult ShouldSample(
-        in SamplingParameters parameters)
-    {
-        // 重要な操作は常にサンプリング
-        if (_importantOperations.Contains(parameters.Name))
+        if (_criticalOperations.Contains(activity.OperationName))
         {
-            return new SamplingResult(true);
+            // 重要な操作は常にサンプリング
+            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+            return;
         }
 
-        // エラータグがある場合は常にサンプリング
-        if (parameters.Tags.Any(tag => _errorTags.Contains(tag.Key)))
+        if (activity.GetTagItem("error") != null)
         {
-            return new SamplingResult(true);
+            // エラー発生時は常にサンプリング
+            activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+            return;
         }
 
-        // デフォルトのサンプリングレート
-        return new SamplingResult(
-            Random.Shared.NextDouble() < _defaultSamplingRate);
+        // その他は負荷に応じて動的にサンプリング
+        var currentLoad = GetSystemLoad();
+        if (currentLoad > 0.8)
+        {
+            // 高負荷時は20%をサンプリング
+            if (Random.Shared.NextDouble() <= 0.2)
+            {
+                activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+            }
+        }
+        else
+        {
+            // 通常時は50%をサンプリング
+            if (Random.Shared.NextDouble() <= 0.5)
+            {
+                activity.ActivityTraceFlags |= ActivityTraceFlags.Recorded;
+            }
+        }
     }
 }
 ```
 
-## メトリクス収集の実装
+### 2. カスタムメトリクス
+参考資料：
+- [メトリクス設計パターン](https://prometheus.io/docs/practices/instrumentation/)
+- [効果的な可視化](https://grafana.com/docs/grafana/latest/panels/visualizations/)
 
-### 1. メトリクスの定義
-
+実装例：
 ```csharp
-public class TodoMetrics
+public class AdvancedMetrics
 {
-    private readonly Meter _meter;
-    private readonly Histogram<double> _operationDuration;
-    private readonly Counter<long> _errorCount;
-    private readonly Counter<long> _operationCount;
-    private readonly ObservableGauge<int> _activeTodoItems;
+    private readonly Histogram<double> _operationLatency;
+    private readonly Counter<long> _businessTransactions;
+    private readonly ObservableGauge<int> _activeConnections;
 
-    public TodoMetrics(string meterName = "TodoApi")
+    public AdvancedMetrics(Meter meter)
     {
-        _meter = new Meter(meterName);
-
-        // 操作時間の分布
-        _operationDuration = _meter.CreateHistogram<double>(
-            "todo.operation.duration",
+        _operationLatency = meter.CreateHistogram<double>(
+            "business.operation.latency",
             unit: "ms",
-            description: "Duration of todo operations"
-        );
+            description: "Business operation latency distribution");
 
-        // エラーカウンター
-        _errorCount = _meter.CreateCounter<long>(
-            "todo.errors",
-            unit: "errors",
-            description: "Number of errors occurred"
-        );
+        _businessTransactions = meter.CreateCounter<long>(
+            "business.transactions",
+            description: "Number of business transactions");
 
-        // 操作カウンター
-        _operationCount = _meter.CreateCounter<long>(
-            "todo.operations",
-            unit: "operations",
-            description: "Number of operations performed"
-        );
-
-        // アクティブなTodoアイテム数
-        _activeTodoItems = _meter.CreateObservableGauge(
-            "todo.items.active",
-            () => GetActiveTodoCount());
+        _activeConnections = meter.CreateObservableGauge<int>(
+            "system.active_connections",
+            () => GetCurrentConnections());
     }
 
-    private int GetActiveTodoCount()
+    public void RecordTransaction(string type, double latency)
     {
-        using var scope = _serviceScopeFactory.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<TodoContext>();
-        return context.TodoItems.Count(t => !t.IsComplete);
+        _operationLatency.Record(latency, new("type", type));
+        _businessTransactions.Add(1, new("type", type));
+    }
+
+    private int GetCurrentConnections()
+    {
+        // 実際の接続数を取得する実装
+        return 0;
     }
 }
 ```
 
-### 2. メトリクス収集の実装
+### 3. エラー検知
+参考資料：
+- [アラート設計](https://prometheus.io/docs/practices/alerting/)
+- [エラー分析パターン](https://opentelemetry.io/docs/instrumentation/net/manual/)
 
-```csharp
-public class TodoItemsController : ControllerBase
-{
-    private readonly TodoMetrics _metrics;
-    private readonly ILogger<TodoItemsController> _logger;
-    private readonly Stopwatch _stopwatch;
+実装例：
+```yaml
+# prometheus-rules.yml
+groups:
+  - name: error_detection
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_duration_count{status_code=~"5.."}[5m])) 
+          / 
+          sum(rate(http_server_duration_count[5m])) 
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High error rate detected
+          description: "Error rate is above 5% for the last 5 minutes"
 
-    public TodoItemsController(
-        TodoMetrics metrics,
-        ILogger<TodoItemsController> logger)
-    {
-        _metrics = metrics;
-        _logger = logger;
-        _stopwatch = new Stopwatch();
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<TodoItem>> CreateTodoItem(
-        TodoItem todoItem)
-    {
-        _stopwatch.Restart();
-        
-        try
-        {
-            var result = await CreateTodoItemInternal(todoItem);
-            
-            _metrics.RecordOperation(
-                "create",
-                _stopwatch.ElapsedMilliseconds);
-                
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _metrics.RecordOperation(
-                "create",
-                _stopwatch.ElapsedMilliseconds,
-                isError: true);
-                
-            _logger.LogError(ex, "Failed to create todo item");
-            throw;
-        }
-        finally
-        {
-            _stopwatch.Stop();
-        }
-    }
-}
+      - alert: LatencySpike
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_server_duration_bucket[5m])
+          ) > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Latency spike detected
+          description: "95th percentile latency is above 500ms"
 ```
 
-## エラーハンドリングの実装
+### 4. パフォーマンス分析
+参考資料：
+- [パフォーマンス計測](https://learn.microsoft.com/ja-jp/dotnet/core/diagnostics/)
+- [ボトルネック分析](https://opentelemetry.io/docs/instrumentation/net/resources/)
 
-### 1. グローバルエラーハンドラー
-
+実装例：
 ```csharp
-public class GlobalExceptionHandler : IExceptionHandler
+public class PerformanceAnalyzer
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
-    private readonly TodoMetrics _metrics;
+    private readonly AdvancedMetrics _metrics;
+    private readonly ILogger<PerformanceAnalyzer> _logger;
+    private readonly ActivitySource _activitySource;
 
-    public GlobalExceptionHandler(
-        ILogger<GlobalExceptionHandler> logger,
-        TodoMetrics metrics)
+    public async Task<T> MeasureOperation<T>(
+        string operationName,
+        Func<Task<T>> operation)
     {
-        _logger = logger;
-        _metrics = metrics;
-    }
-
-    public async ValueTask<bool> TryHandleAsync(
-        HttpContext context,
-        Exception exception,
-        CancellationToken cancellationToken)
-    {
-        var errorId = Guid.NewGuid();
-        var activity = Activity.Current;
-
-        // エラー情報の記録
-        _logger.LogError(
-            exception,
-            "Error {ErrorId} occurred. TraceId: {TraceId}",
-            errorId,
-            activity?.TraceId);
-
-        // メトリクスの記録
-        _metrics.RecordError(
-            exception.GetType().Name,
-            activity?.Duration.TotalMilliseconds ?? 0);
-
-        // エラーレスポンスの作成
-        var problem = new ProblemDetails
-        {
-            Status = GetStatusCode(exception),
-            Title = "An error occurred",
-            Detail = GetSafeErrorMessage(exception),
-            Instance = context.Request.Path,
-            Extensions = 
-            {
-                ["errorId"] = errorId,
-                ["traceId"] = activity?.TraceId.ToString()
-            }
-        };
-
-        await Results.Problem(problem)
-            .ExecuteAsync(context);
-
-        return true;
-    }
-
-    private static int GetStatusCode(Exception exception) =>
-        exception switch
-        {
-            ValidationException => StatusCodes.Status400BadRequest,
-            NotFoundException => StatusCodes.Status404NotFound,
-            _ => StatusCodes.Status500InternalServerError
-        };
-
-    private static string GetSafeErrorMessage(Exception exception) =>
-        exception switch
-        {
-            ValidationException => "Invalid request data",
-            NotFoundException => "Requested resource not found",
-            _ => "An unexpected error occurred"
-        };
-}
-```
-
-## パフォーマンス最適化
-
-### 1. データベース最適化
-
-```csharp
-public class TodoRepository
-{
-    private readonly TodoContext _context;
-    private readonly IMemoryCache _cache;
-    private readonly TodoMetrics _metrics;
-
-    public TodoRepository(
-        TodoContext context,
-        IMemoryCache cache,
-        TodoMetrics metrics)
-    {
-        _context = context;
-        _cache = cache;
-        _metrics = metrics;
-    }
-
-    public async Task<TodoItem?> GetByIdAsync(long id)
-    {
-        var cacheKey = $"todo:{id}";
-        
-        if (_cache.TryGetValue<TodoItem>(cacheKey, out var item))
-        {
-            _metrics.RecordCacheHit();
-            return item;
-        }
-
-        _metrics.RecordCacheMiss();
-        
-        item = await _context.TodoItems
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == id);
-
-        if (item != null)
-        {
-            var cacheOptions = new MemoryCacheEntryOptions()
-                .SetSlidingExpiration(TimeSpan.FromMinutes(5));
-                
-            _cache.Set(cacheKey, item, cacheOptions);
-        }
-
-        return item;
-    }
-
-    public async Task<List<TodoItem>> GetAllAsync()
-    {
-        return await _context.TodoItems
-            .AsNoTracking()
-            .TagWith("Get all todo items")
-            .ToListAsync();
-    }
-
-    public async Task<List<TodoItem>> GetBatchAsync(
-        IEnumerable<long> ids)
-    {
-        return await _context.TodoItems
-            .AsNoTracking()
-            .Where(t => ids.Contains(t.Id))
-            .TagWith("Get batch todo items")
-            .ToListAsync();
-    }
-}
-```
-
-### 2. バッチ処理の最適化
-
-```csharp
-public class BatchOperationService
-{
-    private readonly TodoContext _context;
-    private readonly TodoMetrics _metrics;
-    private readonly ILogger<BatchOperationService> _logger;
-
-    public BatchOperationService(
-        TodoContext context,
-        TodoMetrics metrics,
-        ILogger<BatchOperationService> logger)
-    {
-        _context = context;
-        _metrics = metrics;
-        _logger = logger;
-    }
-
-    public async Task<BatchOperationResult> CompleteManyAsync(
-        IEnumerable<long> ids)
-    {
-        using var activity = Telemetry.ActivitySource
-            .StartActivity("CompleteManyTodoItems");
-            
-        activity?.SetTag("todo.items.count", ids.Count());
-
+        using var activity = _activitySource.StartActivity(operationName);
         var sw = Stopwatch.StartNew();
-        var result = new BatchOperationResult();
 
         try
         {
-            // バッチサイズの最適化
-            const int batchSize = 100;
-            var idBatches = ids
-                .Chunk(batchSize)
-                .ToList();
+            var result = await operation();
 
-            foreach (var batch in idBatches)
-            {
-                var items = await _context.TodoItems
-                    .Where(t => batch.Contains(t.Id))
-                    .ToListAsync();
-
-                foreach (var item in items)
-                {
-                    item.IsComplete = true;
-                    result.ProcessedCount++;
-                }
-
-                await _context.SaveChangesAsync();
-            }
-
-            _metrics.RecordBatchOperation(
-                "complete_many",
-                result.ProcessedCount,
+            // パフォーマンスメトリクスの記録
+            sw.Stop();
+            _metrics.RecordTransaction(
+                operationName,
                 sw.ElapsedMilliseconds);
+
+            // 詳細な情報をトレースに記録
+            activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+            activity?.SetTag("operation.success", true);
+
+            if (sw.ElapsedMilliseconds > 1000)
+            {
+                // 遅いオペレーションを記録
+                _logger.LogWarning(
+                    "Slow operation detected: {Operation}, Duration: {Duration}ms",
+                    operationName,
+                    sw.ElapsedMilliseconds);
+            }
 
             return result;
         }
         catch (Exception ex)
         {
-            _metrics.RecordBatchOperation(
-                "complete_many_failed",
-                result.ProcessedCount,
-                sw.ElapsedMilliseconds);
-
-            _logger.LogError(
-                ex,
-                "Failed to complete todos. ProcessedCount: {Count}",
-                result.ProcessedCount);
-
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.RecordException(ex);
             throw;
         }
     }
@@ -401,109 +209,66 @@ public class BatchOperationService
 
 ## デバッグとトラブルシューティング
 
-### 1. 診断ツールの実装
-
+### 1. 高度なトレース分析
 ```csharp
-public class DiagnosticCollector
+public static class TraceAnalyzer
 {
-    private readonly ILogger<DiagnosticCollector> _logger;
-    private readonly TodoMetrics _metrics;
-    private readonly ConcurrentDictionary<string, List<double>> _timings;
-
-    public DiagnosticCollector(
-        ILogger<DiagnosticCollector> logger,
-        TodoMetrics metrics)
+    public static async Task AnalyzeTraces(
+        IEnumerable<Activity> activities)
     {
-        _logger = logger;
-        _metrics = metrics;
-        _timings = new ConcurrentDictionary<string, List<double>>();
-    }
+        var criticalPaths = activities
+            .Where(a => a.Duration > TimeSpan.FromSeconds(1))
+            .OrderByDescending(a => a.Duration)
+            .Take(10);
 
-    public void RecordTiming(string operation, double milliseconds)
-    {
-        _timings.AddOrUpdate(
-            operation,
-            _ => new List<double> { milliseconds },
-            (_, list) =>
-            {
-                list.Add(milliseconds);
-                return list;
-            });
-    }
-
-    public void AnalyzePerformance()
-    {
-        foreach (var (operation, timings) in _timings)
+        foreach (var activity in criticalPaths)
         {
-            var avg = timings.Average();
-            var p95 = CalculatePercentile(timings, 95);
-            var p99 = CalculatePercentile(timings, 99);
-
-            _logger.LogInformation(
-                "Operation: {Operation}, Avg: {Avg}ms, P95: {P95}ms, P99: {P99}ms",
-                operation, avg, p95, p99);
+            Console.WriteLine($"Critical Path: {activity.OperationName}");
+            Console.WriteLine($"Duration: {activity.Duration}");
+            Console.WriteLine("Dependencies:");
+            
+            foreach (var child in activity.Children)
+            {
+                Console.WriteLine($"- {child.OperationName}: {child.Duration}");
+            }
         }
-    }
-
-    private static double CalculatePercentile(
-        List<double> timings,
-        double percentile)
-    {
-        var sortedTimings = timings.OrderBy(t => t).ToList();
-        var index = (int)Math.Ceiling(percentile / 100.0 * sortedTimings.Count) - 1;
-        return sortedTimings[index];
     }
 }
 ```
 
-### 2. パフォーマンス監視の実装
-
+### 2. パフォーマンスプロファイリング
 ```csharp
-public class PerformanceMonitor
+public class Profiler
 {
-    private readonly TodoMetrics _metrics;
-    private readonly ILogger<PerformanceMonitor> _logger;
-    private readonly DiagnosticCollector _diagnostics;
-    private readonly PerformanceOptions _options;
+    private readonly ConcurrentDictionary<string, List<TimeSpan>> _timings
+        = new();
 
-    public PerformanceMonitor(
-        TodoMetrics metrics,
-        ILogger<PerformanceMonitor> logger,
-        DiagnosticCollector diagnostics,
-        IOptions<PerformanceOptions> options)
+    public void RecordTiming(string operation, TimeSpan duration)
     {
-        _metrics = metrics;
-        _logger = logger;
-        _diagnostics = diagnostics;
-        _options = options.Value;
+        _timings.AddOrUpdate(
+            operation,
+            new List<TimeSpan> { duration },
+            (_, list) =>
+            {
+                list.Add(duration);
+                return list;
+            });
     }
 
-    public async Task MonitorOperationAsync(
-        Func<Task> operation,
-        string operationName)
+    public void PrintStatistics()
     {
-        var sw = Stopwatch.StartNew();
-        
-        try
+        foreach (var (operation, durations) in _timings)
         {
-            await operation();
-        }
-        finally
-        {
-            sw.Stop();
-            var duration = sw.ElapsedMilliseconds;
+            var avg = durations.Average(d => d.TotalMilliseconds);
+            var p95 = durations
+                .OrderBy(d => d)
+                .Skip((int)(durations.Count * 0.95))
+                .First()
+                .TotalMilliseconds;
 
-            _diagnostics.RecordTiming(operationName, duration);
-
-            if (duration > _options.SlowOperationThreshold)
-            {
-                _logger.LogWarning(
-                    "Slow operation detected: {Operation} took {Duration}ms",
-                    operationName,
-                    duration);
-                    
-                _metrics.RecordSlowOperation(operationName, duration);
-            }
+            Console.WriteLine($"Operation: {operation}");
+            Console.WriteLine($"Average: {avg:F2}ms");
+            Console.WriteLine($"95th percentile: {p95:F2}ms");
         }
     }
 }
@@ -511,76 +276,111 @@ public class PerformanceMonitor
 
 ## セキュリティ考慮事項
 
-### 1. 機密情報の取り扱い
-
+### 1. データ保護
 ```csharp
-public static class TelemetryExtensions
+public static class SecurityUtils
 {
-    public static void SetSafeTag(
-        this Activity activity,
-        string key,
-        string? value)
+    public static string MaskSensitiveData(string data)
     {
-        if (string.IsNullOrEmpty(value))
-        {
-            return;
-        }
+        if (string.IsNullOrEmpty(data)) return data;
+        if (data.Length <= 4) return "****";
+        return data.Substring(0, 2) + "****" + 
+               data.Substring(data.Length - 2);
+    }
 
-        // 機密情報のマスク処理
-        var maskedValue = key.ToLower() switch
-        {
-            var k when k.Contains("password") => "***",
-            var k when k.Contains("token") => "***",
-            var k when k.Contains("key") => "***",
-            _ when value.Length > 100 => value[..97] + "...",
-            _ => value
-        };
+    public static void ValidateMetricName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            throw new ArgumentException("Metric name cannot be empty");
 
-        activity?.SetTag(key, maskedValue);
+        if (!Regex.IsMatch(name, "^[a-zA-Z_:][a-zA-Z0-9_:]*$"))
+            throw new ArgumentException(
+                "Invalid metric name. Use letters, numbers, underscores only");
     }
 }
 ```
 
-### 2. エラー情報の制御
+### 2. アクセス制御
+```yaml
+# grafana.ini
+[auth]
+disable_login_form = false
+oauth_auto_login = false
 
+[security]
+admin_password = ${ADMIN_PASSWORD}
+disable_initial_admin_creation = false
+cookie_secure = true
+strict_transport_security = true
+```
+
+## パフォーマンス最適化のベストプラクティス
+
+1. バッチ処理
 ```csharp
-public static class ErrorHandler
+public class BatchProcessor<T>
 {
-    public static string GetSafeErrorMessage(
-        Exception ex,
-        IWebHostEnvironment env)
-    {
-        if (env.IsDevelopment())
-        {
-            return ex.ToString();
-        }
+    private readonly List<T> _batch = new();
+    private readonly int _batchSize;
+    private readonly Func<IEnumerable<T>, Task> _processor;
 
-        return ex switch
+    public async Task Add(T item)
+    {
+        _batch.Add(item);
+        if (_batch.Count >= _batchSize)
         {
-            ValidationException => "Invalid request data",
-            DbUpdateException => "Database operation failed",
-            _ => "An unexpected error occurred"
-        };
+            await Flush();
+        }
     }
 
-    public static void LogError(
-        ILogger logger,
-        Exception ex,
-        string operationName)
+    public async Task Flush()
     {
-        var errorContext = new
+        if (_batch.Count > 0)
         {
-            Operation = operationName,
-            ErrorType = ex.GetType().Name,
-            Message = ex.Message,
-            TraceId = Activity.Current?.TraceId.ToString()
-        };
+            await _processor(_batch.ToList());
+            _batch.Clear();
+        }
+    }
+}
+```
 
-        logger.LogError(
-            ex,
-            "Error in {Operation}. Type: {ErrorType}. TraceId: {TraceId}",
-            errorContext.Operation,
-            errorContext.ErrorType,
-            errorContext.TraceId);
+2. リソース管理
+```csharp
+public class ResourceManager : IDisposable
+{
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks
+        = new();
+    private readonly ConcurrentDictionary<string, int> _usageCounts
+        = new();
+
+    public async Task<IDisposable> AcquireResource(
+        string resourceId,
+        int maxConcurrent = 1)
+    {
+        var semaphore = _locks.GetOrAdd(
+            resourceId,
+            _ => new SemaphoreSlim(maxConcurrent));
+
+        await semaphore.WaitAsync();
+        _usageCounts.AddOrUpdate(resourceId, 1, (_, count) => count + 1);
+
+        return new ResourceHandle(this, resourceId);
+    }
+
+    public void ReleaseResource(string resourceId)
+    {
+        if (_locks.TryGetValue(resourceId, out var semaphore))
+        {
+            semaphore.Release();
+            _usageCounts.AddOrUpdate(resourceId, 0, (_, count) => count - 1);
+        }
+    }
+
+    public void Dispose()
+    {
+        foreach (var semaphore in _locks.Values)
+        {
+            semaphore.Dispose();
+        }
     }
 }
