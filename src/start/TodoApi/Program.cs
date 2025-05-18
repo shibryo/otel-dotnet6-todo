@@ -33,13 +33,21 @@ builder.Services.AddOpenTelemetry()
                 ResourceBuilder.CreateDefault()
                     .AddService(serviceName: "TodoApi"))
             .AddAspNetCoreInstrumentation()    // WebAPI自動計装
+            .AddHttpClientInstrumentation()     // HttpClient自動計装
             .AddEntityFrameworkCoreInstrumentation()  // EF Core自動計装
-            .AddConsoleExporter())  // デバッグ用コンソール出力
+            .AddOtlpExporter(opts => {
+                opts.Endpoint = new Uri("http://otel-collector:4317");
+                opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+            }))
     .WithMetrics(metricsBuilder => 
         metricsBuilder
             .AddMeter("TodoApi")
-            .AddConsoleExporter());
-
+            .AddAspNetCoreInstrumentation()  // HTTP メトリクスを追加
+            .AddPrometheusExporter()
+            .AddOtlpExporter(opts => {
+                opts.Endpoint = new Uri("http://otel-collector:4317");
+                opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+            }));
 
 // Add services to the container.
 builder.Services.AddSingleton<TodoMetrics>();
@@ -62,7 +70,6 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<TodoContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -72,12 +79,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-
 // Enable CORS
 app.UseCors();
 
 app.UseAuthorization();
 app.MapControllers();
+
+// Prometheusメトリクスのエンドポイントを有効化
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 // データベースマイグレーションの自動適用
 using (var scope = app.Services.CreateScope())
