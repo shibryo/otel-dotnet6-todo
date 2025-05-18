@@ -345,3 +345,28 @@
 - 大規模システムでのトレース戦略
 - アラート設定とインシデント管理
 - パフォーマンスチューニング手法
+
+# 進捗状況
+
+## 2025-05-18
+### OpenTelemetryとJaegerの設定
+- OpenTelemetry SDKの実装
+  - TodoApiにOpenTelemetry NuGetパッケージを追加
+  - トレース設定の実装（ASP.NET Core, EF Core, HTTPクライアントの自動計装）
+  - OTLPエクスポーターの設定（gRPCプロトコル使用）
+
+- OpenTelemetry Collectorの設定
+  - OTLPレシーバーの設定（gRPCとHTTP）
+  - JaegerエクスポーターとPrometheusエクスポーターの設定
+  - バッチプロセッサーの設定
+
+### 現状の課題
+1. トレース転送の問題
+   - otel-collectorはエラーなく起動
+   - トレースデータがJaegerに届いていない
+   - JaegerとCollectorの接続設定に問題の可能性
+
+2. 次回の検討事項
+   - JaegerのgRPCポート設定の見直し
+   - Collector-Jaeger間の接続方式の再検討
+   - TodoApiからのトレース送信の検証方法の確立
