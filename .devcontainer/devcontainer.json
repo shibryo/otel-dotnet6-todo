@@ -25,7 +25,7 @@
   "postCreateCommand": {
     "install tilt": "curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash"
   },
-  "forwardPorts": [5000, 5001, 80, 5432, 5050],
+  "forwardPorts": [5000, 5001, 80, 5432, 5050, 4317, 4318, 8889, 16686],
   "remoteUser": "vscode",
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"

@@ -33,20 +33,19 @@ builder.Services.AddOpenTelemetry()
                 ResourceBuilder.CreateDefault()
                     .AddService(serviceName: "TodoApi"))
             .AddAspNetCoreInstrumentation()    // WebAPI自動計装
-            .AddHttpClientInstrumentation()     // HttpClient自動計装
             .AddEntityFrameworkCoreInstrumentation()  // EF Core自動計装
-            .AddOtlpExporter(opts => {
-                opts.Endpoint = new Uri("http://otel-collector:4317");
-                opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+            .AddOtlpExporter(opts =>
+            {
+
             }))
     .WithMetrics(metricsBuilder => 
         metricsBuilder
             .AddMeter("TodoApi")
             .AddAspNetCoreInstrumentation()  // HTTP メトリクスを追加
             .AddPrometheusExporter()
-            .AddOtlpExporter(opts => {
-                opts.Endpoint = new Uri("http://otel-collector:4317");
-                opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+            .AddOtlpExporter(opts =>
+            {
+
             }));
 
 // Add services to the container.

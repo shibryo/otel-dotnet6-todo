@@ -1,1 +1,16 @@
 docker_compose("docker-compose.yml")
+
+docker_build(
+    'todo-api-image',
+    '../TodoApi',
+    build_args={
+        'ASPNETCORE_ENVIRONMENT':'Development',
+        'ASPNETCORE_URLS':'http://+:5000',
+        'ConnectionStrings__DefaultConnection':'Host=db;Database=todo_db;Username=postgres;Password=postgres;',
+        'TEL_EXPORTER_OTLP_ENDPOINT':'http://otelcol:4317',
+    },
+    live_update=[
+        sync('../TodoApi', '/src'),
+        restart_container(),
+    ]
+)
