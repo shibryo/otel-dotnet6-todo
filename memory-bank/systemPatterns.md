@@ -7,8 +7,9 @@ graph TD
     A[Todo Frontend] -->|HTTP| B[Todo API]
     B -->|SQL| C[PostgreSQL]
     B -->|Export| D[OTel Collector]
-    D -->|Export| E[Jaeger]
-    D -->|Export| F[Grafana]
+    D -->|Export OTLP| E[Jaeger]
+    D -->|Scrape| F[Prometheus]
+    F -->|Data Source| G[Grafana]
 ```
 
 ## アーキテクチャ設計方針
@@ -133,8 +134,15 @@ graph TD
 ### 3. モニタリング連携
 
 - OpenTelemetry Protocol (OTLP)
+  * gRPC: 4317ポート
+  * HTTP: 4318ポート
 - Collector による集中管理
+  * Prometheusエクスポート: 8889ポート
+  * バッチ処理による最適化
 - 各バックエンドへのエクスポート
+  * Jaeger: トレース可視化
+  * Prometheus: メトリクス収集（スクレイプ間隔: 15秒）
+  * Grafana: 統合ダッシュボード
 
 ## エラーハンドリングパターン
 
