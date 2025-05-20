@@ -1,16 +1,15 @@
 # Prometheus設定ファイル
 global:
-  scrape_interval: 15s     # メトリクス収集の間隔
+  scrape_interval: 5s     # メトリクス収集の間隔
 
 scrape_configs:
-  # 一時的にコメントアウト
-  # - job_name: 'otel-collector'
-  #   static_configs:
-  #     - targets: ['otel-collector:8889']
-  #   metrics_path: '/metrics'
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otelcol:8889']
+    metrics_path: '/metrics'
 
   - job_name: 'todo-api'
     static_configs:
       - targets: ['todo-api:5000']
-    metrics_path: '/metrics'
+    metrics_path: '/metrics/prometheus'
     scheme: 'http'

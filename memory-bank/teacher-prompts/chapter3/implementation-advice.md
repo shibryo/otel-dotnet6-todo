@@ -1,260 +1,113 @@
 # 第3章：観測環境の構築 - 実装アドバイス
 
-## 章の学習目標
+## 指導方針
 
-1. 観測環境の理解
-   - 各コンポーネントの役割と連携
-   - データの流れと処理パイプライン
-   - スケーラビリティとパフォーマンス
-
-2. 各ツールの設定スキル
-   - OpenTelemetry Collector
-   - Jaeger
-   - Prometheus
-   - Grafana
-
-3. 実践的な運用スキル
-   - トラブルシューティング
-   - パフォーマンスチューニング
-   - セキュリティ考慮事項
-
-## セッション別コンテンツ
-
-### 1. Collector設定
-参考資料：
-- [Collector設定ガイド](https://opentelemetry.io/docs/collector/configuration/)
-- [パイプライン設計](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/design.md)
-
-設定のポイント：
-```yaml
-# otel-collector-config.yaml
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: "0.0.0.0:4317"
-      http:
-        endpoint: "0.0.0.0:4318"
-
-processors:
-  batch:
-    timeout: 1s
-    send_batch_size: 1024
-
-exporters:
-  jaeger:
-    endpoint: "jaeger:14250"
-    tls:
-      insecure: true
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [jaeger]
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheus]
+### 1. 理解度の確認
+各実装ステップで以下の質問を投げかけ：
+```
+現在の実装について：
+- 実装の目的は明確ですか？
+- 分からない点や気になる点はありますか？
+- より詳しく知りたい部分はありますか？
 ```
 
-### 2. トレース可視化
-参考資料：
-- [Jaeger UI ガイド](https://www.jaegertracing.io/docs/latest/frontend-ui/)
-- [トレース分析手法](https://opentelemetry.io/docs/concepts/signals/traces/)
+### 2. 疑問点の掘り下げ
+よくある疑問：
+- なぜこのポート番号を使用するのか
+- なぜこのサービスが必要なのか
+- サービス間はどのように通信しているのか
+- この設定が何を制御しているのか
 
-実装例：
-```yaml
-# docker-compose.yml
-services:
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "16686:16686"
-      - "14250:14250"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-```
+### 3. 理解の深化
+特に注目すべき点：
+- コンテナ間の通信の仕組み
+- データの流れ（トレース・メトリクス）
+- 各ツールの役割と連携
 
-### 3. メトリクス収集
-参考資料：
-- [Prometheus設定ガイド](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)
-- [PromQL基礎](https://prometheus.io/docs/prometheus/latest/querying/basics/)
+## 対話のポイント
 
-設定例：
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+### 1. Collector設定時
+確認したい点：
+- OTLPプロトコルについて
+- レシーバーとエクスポーターの関係
+- バッチ処理の意味
 
-scrape_configs:
-  - job_name: 'otel-collector'
-    static_configs:
-      - targets: ['otel-collector:8889']
+### 2. Jaeger連携時
+理解を深めたい点：
+- トレースデータの流れ
+- サンプリングの仕組み
+- UI表示までの経路
 
-  - job_name: 'todoapi'
-    static_configs:
-      - targets: ['todoapi:80']
-```
+### 3. Prometheus設定時
+掘り下げたい点：
+- スクレイピングの仕組み
+- メトリクス形式の理解
+- データ保持期間
 
-クエリ例：
-```promql
-# リクエスト数の計測
-rate(http_server_duration_count[5m])
+### 4. Grafana設定時
+確認したい点：
+- データソースの連携
+- クエリの書き方
+- 可視化の選択
 
-# エラー率の計算
-sum(rate(http_server_duration_count{status_code=~"5.."}[5m])) 
-  / 
-sum(rate(http_server_duration_count[5m]))
-```
+## トラブルシューティングガイド
 
-### 4. ダッシュボード作成
-参考資料：
-- [Grafanaダッシュボード](https://grafana.com/docs/grafana/latest/dashboards/)
-- [可視化のベストプラクティス](https://grafana.com/docs/grafana/latest/best-practices/)
+### 質問すべきポイント
+1. エラー発生時
+   - エラーメッセージの内容は理解できましたか？
+   - どのタイミングでエラーが発生しましたか？
+   - 関連するログは確認できましたか？
 
-ダッシュボード例：
-```json
-{
-  "panels": [
-    {
-      "title": "リクエスト数",
-      "type": "graph",
-      "datasource": "Prometheus",
-      "targets": [
-        {
-          "expr": "rate(http_server_duration_count[5m])",
-          "legendFormat": "{{operation}}"
-        }
-      ]
-    },
-    {
-      "title": "レスポンスタイム",
-      "type": "heatmap",
-      "datasource": "Prometheus",
-      "targets": [
-        {
-          "expr": "rate(http_server_duration_bucket[5m])",
-          "format": "heatmap"
-        }
-      ]
-    }
-  ]
-}
-```
+2. 期待通りに動作しない時
+   - 想定している動作は何ですか？
+   - 現在の状態をどのように確認しましたか？
+   - 設定内容は意図通りですか？
 
-## トラブルシューティング
+## 学習の進め方
 
-### 1. Collector接続エラー
-```bash
-# ログの確認
-docker logs otel-collector
+### 1. 概念理解
+以下の点について理解を確認：
+- 分散トレーシングの目的
+- メトリクス収集の意義
+- 可視化の重要性
 
-# 設定の検証
-docker exec otel-collector otelcol-contrib --config-file=/etc/otelcol-contrib/config.yaml --dry-run
-```
+### 2. 実装時
+各ステップで以下を確認：
+- 実装の目的の理解
+- 設定内容の意図
+- 動作確認方法
 
-### 2. メトリクス収集の問題
-```bash
-# Prometheusターゲットの確認
-curl http://localhost:9090/targets
+### 3. 動作確認時
+確認ポイント：
+- データの流れの把握
+- 各ツールの連携状態
+- 可視化結果の解釈
 
-# メトリクスの直接確認
-curl http://localhost:8889/metrics
-```
+## フィードバックのポイント
 
-### 3. トレース欠落
-```bash
-# サンプリング設定の確認
-# otel-collector-config.yaml
-processors:
-  probabilistic_sampler:
-    sampling_percentage: 100
+### 1. 実装面
+- 意図した通りに動作しているか
+- 設定の意図は理解できているか
+- 改善したい点はあるか
 
-# Jaegerクエリの確認
-curl http://localhost:16686/api/traces?service=todoapi
-```
+### 2. 理解面
+- 概念は理解できているか
+- 不明点は残っていないか
+- さらに深めたい部分はあるか
 
-## セキュリティ考慮事項
+### 3. 運用面
+- 実際の運用をイメージできているか
+- トラブル時の対応は理解できているか
+- スケーリングについて考慮できているか
 
-### 1. アクセス制御
-```yaml
-# 認証設定例
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: "0.0.0.0:4317"
-        tls:
-          cert_file: "/certs/server.crt"
-          key_file: "/certs/server.key"
-```
+## 次のステップに向けて
 
-### 2. データ保護
-- 機密情報のフィルタリング
-- TLS通信の確保
-- アクセスログの監視
+### 確認すべきポイント
+- 基本概念の理解度
+- 実装の完了度
+- 残された疑問点
 
-## パフォーマンス最適化
-
-### 1. Collector設定
-```yaml
-processors:
-  batch:
-    timeout: 1s
-    send_batch_size: 1024
-  memory_limiter:
-    check_interval: 1s
-    limit_mib: 1024
-```
-
-### 2. Prometheusチューニング
-```yaml
-global:
-  scrape_interval: 15s
-  scrape_timeout: 10s
-
-scrape_configs:
-  - job_name: 'otel-collector'
-    scrape_interval: 5s
-    scrape_timeout: 4s
-```
-
-### 3. Grafanaリソース管理
-```ini
-[server]
-max_connections = 100
-idle_timeout = 180
-
-[dashboards]
-versions_to_keep = 20
-```
-
-## デバッグのコツ
-
-### 1. Collectorデバッグ
-```bash
-# デバッグモードでの起動
-docker run -e COLLECTOR_DEBUG=true otel/opentelemetry-collector-contrib
-
-# メトリクスエンドポイントの確認
-curl http://localhost:8889/metrics
-```
-
-### 2. Prometheus確認
-```bash
-# クエリ実行時間の確認
-curl -g 'http://localhost:9090/api/v1/query_range?query=rate(http_server_duration_count[5m])&start=2024-01-01T20:10:30.781Z&end=2024-01-01T20:11:00.781Z&step=15s'
-```
-
-### 3. Jaegerトラブルシューティング
-```bash
-# スパン数の確認
-curl http://localhost:16686/api/traces?service=todoapi&operation=CreateTodoItem
-
-# 特定のトレースの詳細
-curl http://localhost:16686/api/traces/{trace-id}
+### 発展的な話題
+- パフォーマンスの最適化
+- セキュリティの考慮
+- 大規模環境での運用

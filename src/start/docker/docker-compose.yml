@@ -10,6 +10,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__DefaultConnection=Host=db;Database=todo_db;Username=postgres;Password=postgres
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317
 
     depends_on:
@@ -65,11 +66,9 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
-      - "16686:16686"
+      - "16686:16686"   # UI
+      - "14250:14250"   # Model/collector gRPC
     environment:
-      - COLLECTOR_OTLP_ENABLED=true
-      - COLLECTOR_OTLP_GRPC_PORT=4317
-      - COLLECTOR_OTLP_HTTP_PORT=4318
       - LOG_LEVEL=debug
 
 

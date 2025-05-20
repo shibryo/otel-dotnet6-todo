@@ -28,25 +28,23 @@ builder.Services.AddLogging(logging =>
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProviderBuilder =>
         tracerProviderBuilder
-            .AddSource("TodoApi")
+            .AddSource("TodoApi.Traces")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
-                    .AddService(serviceName: "TodoApi"))
+                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0")
+                    .AddAttributes(new Dictionary<string, object>
+                    {
+                        ["environment"] = builder.Environment.EnvironmentName
+                    }))
             .AddAspNetCoreInstrumentation()    // WebAPI自動計装
             .AddEntityFrameworkCoreInstrumentation()  // EF Core自動計装
-            .AddOtlpExporter(opts =>
-            {
-
-            }))
+            .AddOtlpExporter())
     .WithMetrics(metricsBuilder => 
         metricsBuilder
-            .AddMeter("TodoApi")
+            .AddMeter("TodoApi.Metrics")
             .AddAspNetCoreInstrumentation()  // HTTP メトリクスを追加
             .AddPrometheusExporter()
-            .AddOtlpExporter(opts =>
-            {
-
-            }));
+            .AddOtlpExporter());
 
 // Add services to the container.
 builder.Services.AddSingleton<TodoMetrics>();
