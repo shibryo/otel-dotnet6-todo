@@ -21,26 +21,62 @@ processors:
   batch:
     timeout: 1s
     send_batch_size: 1024
+    send_batch_max_size: 2048
 
 exporters:
-  jaeger:
-    endpoint: jaeger:14250
+  debug:
+    verbosity: detailed
+
+  otlp/jaeger:
+    endpoint: jaeger:4317
     tls:
       insecure: true
+  
   prometheus:
     endpoint: 0.0.0.0:8889
+    namespace: todo_app
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [jaeger]
+      exporters: 
+        - otlp/jaeger
+        - debug
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [prometheus]
+      exporters: [prometheus, debug]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
 ```
+
+### Collectorコンポーネントの詳細
+
+1. レシーバー（receivers）
+   - OTLP/gRPC: 4317ポートでデータを受信
+   - OTLP/HTTP: 4318ポートでデータを受信
+   - 受信したデータはパイプラインに従って処理
+
+2. プロセッサー（processors）
+   - バッチ処理の設定
+     * timeout: 1秒でバッチを強制送信
+     * send_batch_size: 通常のバッチサイズ（1024）
+     * send_batch_max_size: 最大バッチサイズ（2048）
+   - パフォーマンスとリソース使用の最適化
+
+3. エクスポーター（exporters）
+   - debug: トラブルシューティング用の詳細ログ出力
+   - otlp/jaeger: Jaegerへのトレースデータ転送
+   - prometheus: メトリクスデータの公開
+
+4. パイプライン定義
+   - トレース: OTLP受信 → バッチ処理 → Jaeger/Debug出力
+   - メトリクス: OTLP受信 → バッチ処理 → Prometheus/Debug出力
+   - ログ: OTLP受信 → バッチ処理 → Debug出力
 
 ### エラー処理の設定
 

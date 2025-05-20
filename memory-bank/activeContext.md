@@ -54,21 +54,23 @@
   * メトリクス収集の確認
   * 可視化の確認
 
-#### 第3章のドキュメント更新
-1. テキストの不整合
-   - Jaegerのポート設定の誤り（14250 → 4317）
-   - Prometheusのscrape_interval説明不足
-   - Grafanaの設定詳細の不足
+#### 第3章のドキュメント更新完了
+1. 更新内容
+   - ✅ 01_observability_setup.md: Jaegerポート、Prometheus設定
+   - ✅ 02_collector_config.md: バッチ処理、debugエクスポーター
+   - ✅ 03_trace_visualization.md: Jaegerポート、デバッグレベル
+   - ✅ 04_metrics_monitoring.md: メトリクス名、アラートルール
 
-2. Collector設定の更新
-   - バッチ処理パラメータの完全な説明
-   - debugエクスポーターの説明追加
-   - 実装例の更新
+2. 設定の統一
+   - ✅ Jaegerポート: 4317に統一
+   - ✅ Prometheusスクレイプ間隔: 15秒
+   - ✅ メトリクス名: 実装との整合性確保
+   - ✅ バッチ処理パラメータ: 完全な説明追加
 
-3. ドキュメント更新タスク
-   - [ ] 01_observability_setup.mdの更新
-   - [ ] 02_collector_config.mdの更新
-   - [ ] サンプルコードの更新
+3. 動作確認
+   - ✅ トレース収集（Jaeger）
+   - ✅ メトリクス収集（Prometheus）
+   - ✅ ダッシュボード（Grafana）
 
 #### 第4章への準備状況
 - 技術的準備

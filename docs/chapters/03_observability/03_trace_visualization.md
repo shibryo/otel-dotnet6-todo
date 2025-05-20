@@ -14,7 +14,9 @@ services:
     image: jaegertracing/all-in-one:latest
     ports:
       - "16686:16686"   # Web UI
-      - "14250:14250"   # gRPC
+      - "4317:4317"     # OTLP/gRPC
+    environment:
+      - LOG_LEVEL=debug
 ```
 
 ### トレースの確認方法

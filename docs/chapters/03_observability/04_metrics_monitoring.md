@@ -23,21 +23,30 @@ public class TodoMetrics
         var meter = new Meter("TodoApi");
         
         // 基本的なメトリクス
-        _todosCreatedCounter = meter.CreateCounter<int>("todo.created");
-        _todosCompletedCounter = meter.CreateCounter<int>("todo.completed");
-        _activeTodosCounter = meter.CreateUpDownCounter<int>("todo.active");
+        _todosCreatedCounter = meter.CreateCounter<int>(
+            "todo_items_created_total",
+            description: "Total number of created todo items");
+        _todosCompletedCounter = meter.CreateCounter<int>(
+            "todo_items_completed_total",
+            description: "Total number of completed todo items");
+        _activeTodosCounter = meter.CreateUpDownCounter<int>(
+            "todo_items_active",
+            description: "Current number of active todo items");
         
         // パフォーマンスメトリクス
         _todoCompletionTimeHistogram = meter.CreateHistogram<double>(
-            "todo.completion_time",
-            unit: "ms");
+            "todo_completion_time_milliseconds",
+            unit: "ms",
+            description: "Todo item completion time");
         _apiResponseTimeHistogram = meter.CreateHistogram<double>(
-            "todo.api.response_time",
-            unit: "ms");
+            "todo_app_http_server_duration_milliseconds",
+            unit: "ms",
+            description: "HTTP server response time");
         
         // エラーメトリクス
         _todoOperationErrorCounter = meter.CreateCounter<int>(
-            "todo.operation.errors");
+            "todo_operation_errors_total",
+            description: "Total number of operation errors");
     }
 }
 ```
@@ -48,7 +57,10 @@ public class TodoMetrics
    ```csharp
    public void TodoCompleted(DateTime createdAt, string priority = "normal")
    {
-       _todosCompletedCounter.Add(1);
+       _todosCompletedCounter.Add(1, new KeyValuePair<string, object>[]
+       {
+           new("priority", priority)
+       });
        _activeTodosCounter.Add(-1);
        
        var completionTime = (DateTime.UtcNow - createdAt).TotalMilliseconds;
@@ -63,7 +75,8 @@ public class TodoMetrics
        _apiResponseTimeHistogram.Record(milliseconds, 
            new KeyValuePair<string, object>[] 
            {
-               new("operation", operation)
+               new("operation", operation),
+               new("http_route", operation)
            });
    }
    ```
@@ -91,7 +104,9 @@ groups:
   rules:
   # エラー率アラート
   - alert: HighErrorRate
-    expr: rate(todo_operation_errors_total[5m]) > 0.1
+    expr: |
+      sum(rate(todo_app_http_server_duration_milliseconds_count{status_code=~"5.."}[5m])) /
+      sum(rate(todo_app_http_server_duration_milliseconds_count[5m])) > 0.1
     for: 5m
     labels:
       severity: warning
@@ -101,7 +116,7 @@ groups:
 
   # レスポンスタイムアラート
   - alert: HighResponseTime
-    expr: histogram_quantile(0.95, rate(todo_api_response_time_bucket[5m])) > 500
+    expr: histogram_quantile(0.95, rate(todo_app_http_server_duration_milliseconds_bucket[5m])) > 500
     for: 5m
     labels:
       severity: warning
@@ -139,25 +154,25 @@ graph TB
 1. p95/p99レイテンシの計測
    ```promql
    histogram_quantile(0.95, 
-     sum(rate(todo_api_response_time_bucket[5m])) by (le, operation))
+     sum(rate(todo_app_http_server_duration_milliseconds_bucket[5m])) by (le, http_route))
    ```
 
 2. レイテンシのトレンド分析
    ```promql
-   rate(todo_api_response_time_sum[1h]) / 
-   rate(todo_api_response_time_count[1h])
+   rate(todo_app_http_server_duration_milliseconds_sum[1h]) / 
+   rate(todo_app_http_server_duration_milliseconds_count[1h])
    ```
 
 ### リソース使用率の監視
 
 1. メモリ使用率
    ```promql
-   process_working_set_bytes{job="todoapi"}
+   process_working_set_bytes{job="todo-api"}
    ```
 
 2. GCメトリクス
    ```promql
-   dotnet_total_memory_bytes{job="todoapi"}
+   dotnet_total_memory_bytes{job="todo-api"}
    ```
 
 ## 4. パフォーマンス最適化のヒント

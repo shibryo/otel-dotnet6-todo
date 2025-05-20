@@ -56,8 +56,8 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
-      - "16686:16686"  # Web UI
-      - "14250:14250"  # gRPC
+      - "16686:16686"   # Web UI
+      - "4317:4317"     # OTLP/gRPC
 
   # Prometheus
   prometheus:
@@ -211,23 +211,52 @@ graph TB
     C --> G[データベース]
 ```
 
-### Prometheusクエリ例
+### Prometheus設定
 
-1. リクエスト率
-   ```promql
-   rate(http_requests_total[5m])
+1. メトリクス収集設定
+   ```yaml
+   global:
+     scrape_interval: 15s     # メトリクス収集の間隔
+
+   scrape_configs:
+     - job_name: 'otel-collector'
+       static_configs:
+         - targets: ['otelcol:8889']
+       metrics_path: '/metrics'
+
+     - job_name: 'todo-api'
+       static_configs:
+         - targets: ['todo-api:5000']
+       metrics_path: '/metrics/prometheus'
+       scheme: 'http'
    ```
 
-2. エラー率
+2. クエリ例
    ```promql
-   sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
-   sum(rate(http_requests_total[5m]))
-   ```
+   # リクエスト率の計算
+   rate(todo_app_http_server_duration_milliseconds_count[5m])
 
-3. レスポンスタイム
-   ```promql
+   # エラー率の計算
+   sum(rate(todo_app_http_server_duration_milliseconds_count{status_code=~"5.."}[5m])) /
+   sum(rate(todo_app_http_server_duration_milliseconds_count[5m]))
+
+   # レスポンスタイム（95パーセンタイル）
    histogram_quantile(0.95, 
-     rate(http_response_time_bucket[5m]))
+     rate(todo_app_http_server_duration_milliseconds_bucket[5m]))
+   ```
+
+### Grafanaセットアップ
+
+1. データソース設定
+   ```yaml
+   apiVersion: 1
+   
+   datasources:
+     - name: Prometheus
+       type: prometheus
+       access: proxy
+       url: http://prometheus:9090
+       isDefault: true
    ```
 
 ## 5. トラブルシューティング
