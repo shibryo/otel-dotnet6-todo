@@ -54,23 +54,23 @@
   * メトリクス収集の確認
   * 可視化の確認
 
-#### 第3章のドキュメント更新完了
-1. 更新内容
-   - ✅ 01_observability_setup.md: Jaegerポート、Prometheus設定
-   - ✅ 02_collector_config.md: バッチ処理、debugエクスポーター
-   - ✅ 03_trace_visualization.md: Jaegerポート、デバッグレベル
-   - ✅ 04_metrics_monitoring.md: メトリクス名、アラートルール
+#### 第3章の実装状況
+1. 設定準備（完了）
+   - ✅ docker-compose.yml: 監視コンポーネントの定義
+   - ✅ otel-collector-config.yaml: Collectorの基本設定
+   - ✅ Program.cs: OpenTelemetryの基本設定
 
-2. 設定の統一
-   - ✅ Jaegerポート: 4317に統一
-   - ✅ Prometheusスクレイプ間隔: 15秒
-   - ✅ メトリクス名: 実装との整合性確保
-   - ✅ バッチ処理パラメータ: 完全な説明追加
+2. ハンズオン（未実施）
+   - Collectorの実践的な設定と確認
+   - Jaegerを使用したトレース可視化の実践
+   - Prometheusでのメトリクス収集の確認
+   - Grafanaでのダッシュボード作成
 
-3. 動作確認
-   - ✅ トレース収集（Jaeger）
-   - ✅ メトリクス収集（Prometheus）
-   - ✅ ダッシュボード（Grafana）
+3. ドキュメント更新タスク
+   - [ ] 実践的な設定手順の追加
+   - [ ] 可視化の具体的な手順の追加
+   - [ ] トラブルシューティングガイドの作成
+   - [ ] ダッシュボード作成ガイドの作成
 
 #### 第4章への準備状況
 - 技術的準備
