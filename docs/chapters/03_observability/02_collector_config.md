@@ -183,32 +183,115 @@ processors:
           - .*todo.*
 ```
 
-## 7. トラブルシューティング
+## 7. トラブルシューティングガイド
 
-### 7.1 設定の検証
+### 7.1 問題の切り分け方
 
+1. 症状の確認
+- [ ] データが受信されない
+- [ ] エクスポートが失敗する
+- [ ] メモリ使用量が異常
+- [ ] パフォーマンスが低下
+
+2. ログの確認
+```bash
+# Collectorのログ確認
+docker compose logs -f otelcol
+
+# デバッグレベルでの実行
+docker compose exec otelcol otelcol --config=/etc/otelcol/config.yaml --log-level=debug
+
+# エラーの確認
+docker compose logs | grep -i error
+docker compose logs | grep -i failed
+```
+
+3. 設定の確認
 ```bash
 # 設定ファイルの構文チェック
 docker compose exec otelcol otelcol --config=/etc/otelcol/config.yaml --validate-config
-```
 
-### 7.2 よくあるエラー対処
-
-1. データが受信されない：
-```bash
-# ポートの確認
+# 受信ポートの確認
 docker compose exec otelcol netstat -tulpn
 
-# ログレベルの変更
-service:
-  telemetry:
-    logs:
-      level: debug
+# メトリクスの確認
+curl http://localhost:8889/metrics
 ```
 
-2. メモリ使用量が高い：
-- バッチサイズの調整
-- 送信間隔の調整
-- 不要なプロセッサーの削除
+### 7.2 よくある問題と解決策
+
+1. データ受信の問題
+- 原因：
+  * ポートの設定ミス
+  * プロトコルの不一致
+  * ネットワーク接続の問題
+- 解決策：
+  * エンドポイント設定の確認
+  * プロトコル設定の確認
+  * ネットワーク疎通の確認
+
+2. メモリ使用量の問題
+- 原因：
+  * バッチサイズが大きすぎる
+  * データ量が多すぎる
+  * メモリリーク
+- 解決策：
+  * バッチ設定の最適化
+  * サンプリングの導入
+  * 不要なプロセッサーの削除
+
+3. エクスポートの問題
+- 原因：
+  * バックエンドの接続エラー
+  * 設定の誤り
+  * 認証の問題
+- 解決策：
+  * バックエンド接続の確認
+  * エクスポーター設定の見直し
+  * TLS/認証設定の確認
+
+### 7.3 診断コマンド集
+
+1. 状態確認コマンド
+```bash
+# プロセス状態の確認
+docker compose ps otelcol
+
+# メモリ使用量の確認
+docker stats otelcol
+
+# 設定の確認
+docker compose exec otelcol cat /etc/otelcol/config.yaml
+```
+
+2. ログ確認コマンド
+```bash
+# 詳細ログの有効化
+docker compose exec otelcol otelcol --config=/etc/otelcol/config.yaml --log-level=debug
+
+# エラーログの確認
+docker compose logs otelcol | grep -i error
+
+# 特定のコンポーネントのログ
+docker compose logs otelcol | grep -i "processor::batch"
+```
+
+3. 接続確認コマンド
+```bash
+# Jaeger接続の確認
+docker compose exec otelcol nc -zv jaeger 4317
+
+# Prometheusエンドポイントの確認
+curl http://localhost:8889/metrics
+
+# ネットワーク状態の確認
+docker network inspect $(docker compose ps -q)
+```
+
+> 💡 効率的なトラブルシューティングのポイント
+> - 設定ファイルの変更前にバックアップを作成
+> - 一度に1つの設定のみ変更
+> - デバッグログを活用して問題を特定
+> - パイプラインの各段階で動作を確認
 
 次のセクションでは、Jaegerを使用したトレース可視化を行います。

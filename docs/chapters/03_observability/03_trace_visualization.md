@@ -134,45 +134,116 @@ wait
 - キャッシュの活用
 - 非同期処理の導入
 
-## 6. トラブルシューティング
+## 6. トラブルシューティングガイド
 
-### 6.1 トレースが表示されない
+### 6.1 問題の切り分け方
 
-1. 設定の確認：
+1. 症状の確認
+- [ ] トレースが全く表示されない
+- [ ] トレース情報が不完全
+- [ ] Spanが欠落している
+- [ ] Context伝搬が機能していない
+
+2. ログの確認
 ```bash
-# Collectorのログ確認
-docker compose logs -f otelcol
+# 全体のログ確認
+docker compose logs -f
 
-# Jaegerのログ確認
+# サービス別のログ確認
+docker compose logs -f jaeger
+docker compose logs -f otelcol
+docker compose logs -f todo-api
+
+# エラーの確認
+docker compose logs | grep -i error
+docker compose logs | grep -i span
+```
+
+3. 設定の確認
+```bash
+# OpenTelemetry環境変数
+docker compose exec todo-api env | grep OTEL
+
+# Jaeger UI状態確認
+curl http://localhost:16686/api/services
+
+# Collector設定確認
+docker compose exec otelcol cat /etc/otelcol/config.yaml
+```
+
+### 6.2 よくある問題と解決策
+
+1. トレースが表示されない
+- 原因：
+  * サンプリング設定の問題
+  * Collectorへの接続エラー
+  * Jaegerへのエクスポート失敗
+- 解決策：
+  * サンプリング率の確認と調整
+  * Collector接続設定の確認
+  * Jaegerの状態確認
+
+2. トレース情報が不完全
+- 原因：
+  * Context伝搬の問題
+  * 設定の不備
+  * SDKの問題
+- 解決策：
+  * HTTPヘッダーの確認
+  * Instrumentationの設定確認
+  * SDKバージョンの確認
+
+3. パフォーマンスの問題
+- 原因：
+  * データ量が多すぎる
+  * サンプリング率が高すぎる
+  * リソース不足
+- 解決策：
+  * サンプリング戦略の見直し
+  * バッファサイズの調整
+  * リソースの増強
+
+### 6.3 診断コマンド集
+
+1. トレース生成の確認
+```bash
+# テストリクエストの送信
+curl -v -X POST http://localhost:5000/api/todoitems \
+  -H "Content-Type: application/json" \
+  -d '{"name": "テスト", "isComplete": false}'
+
+# Context伝搬の確認
+curl -v http://localhost:5000/api/todoitems
+```
+
+2. ログ確認コマンド
+```bash
+# Jaegerのログ
 docker compose logs -f jaeger
 
-# 特定のキーワードでログをフィルタ
-docker compose logs | grep error
+# Spanの詳細確認
+docker compose logs | grep -i "span"
+
+# Context伝搬の確認
+docker compose logs | grep -i "traceparent"
 ```
 
-> 💡 効果的なログ確認
-> - `-f`オプションでリアルタイムログを表示
-> - `grep`でエラーメッセージを絞り込み
-> - 複数コンテナのログを同時に確認
-
-2. 環境変数の確認：
+3. 接続確認コマンド
 ```bash
-docker compose exec todo-api env | grep OTEL
+# Jaeger UI接続確認
+curl -s http://localhost:16686/api/services
+
+# Collectorからの接続確認
+docker compose exec otelcol nc -zv jaeger 4317
+
+# ネットワーク状態の確認
+docker network inspect $(docker compose ps -q)
 ```
 
-### 6.2 トレース情報が不完全
-
-1. Context伝搬の確認：
-```http
-# HTTPヘッダーの確認
-GET /api/todoitems
-traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
-```
-
-2. サンプリング設定の確認：
-```bash
-# サンプリング率の確認
-curl http://localhost:4317/sampling
-```
+> 💡 効率的なトラブルシューティングのポイント
+> - テストリクエストで問題を再現
+> - トレースの流れを段階的に確認
+> - Context伝搬を確実に追跡
+> - サービス間の接続を順に確認
 
 次のセクションでは、PrometheusとGrafanaを使用したメトリクス監視を行います。

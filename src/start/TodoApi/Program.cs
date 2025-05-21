@@ -28,23 +28,33 @@ builder.Services.AddLogging(logging =>
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerProviderBuilder =>
         tracerProviderBuilder
-            .AddSource("TodoApi.Traces")
+            .AddSource("TodoApi")
             .SetResourceBuilder(
                 ResourceBuilder.CreateDefault()
-                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0")
-                    .AddAttributes(new Dictionary<string, object>
-                    {
-                        ["environment"] = builder.Environment.EnvironmentName
-                    }))
-            .AddAspNetCoreInstrumentation()    // WebAPI自動計装
-            .AddEntityFrameworkCoreInstrumentation()  // EF Core自動計装
-            .AddOtlpExporter())
-    .WithMetrics(metricsBuilder => 
-        metricsBuilder
-            .AddMeter("TodoApi.Metrics")
-            .AddAspNetCoreInstrumentation()  // HTTP メトリクスを追加
-            .AddPrometheusExporter()
-            .AddOtlpExporter());
+                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddProcessor(new TodoSamplingProcessor(
+                defaultSamplingRatio: builder.Environment.IsDevelopment() ? 1.0 : 0.1))
+            .AddConsoleExporter()
+            .AddOtlpExporter(opts => {
+                opts.Endpoint = new Uri("http://otel-collector:4317");
+            })
+    })
+    .WithMetrics(metricsProviderBuilder =>
+    {
+        metricsProviderBuilder
+            .SetResourceBuilder(
+                ResourceBuilder.CreateDefault()
+                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddConsoleExporter()
+            .AddOtlpExporter(opts => {
+                opts.Endpoint = new Uri("http://otel-collector:4317");
+            });
+    });
 
 // Add services to the container.
 builder.Services.AddSingleton<TodoMetrics>();
@@ -57,7 +67,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost")
+        policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -81,9 +91,6 @@ app.UseCors();
 
 app.UseAuthorization();
 app.MapControllers();
-
-// Prometheusメトリクスのエンドポイントを有効化
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 // データベースマイグレーションの自動適用
 using (var scope = app.Services.CreateScope())
