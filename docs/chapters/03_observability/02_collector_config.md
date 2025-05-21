@@ -56,15 +56,19 @@ service:
 
 ## 2. 設定の適用と確認
 
-1. Collectorの再起動：
+1. Tiltによる設定の適用：
 ```bash
-docker compose restart otelcol
+# 設定変更を監視して自動反映
+tilt up
+
+# ログの確認（Tilt UI）
+http://localhost:10350
 ```
 
-2. ログの確認：
-```bash
-docker compose logs -f otelcol
-```
+> 💡 Tiltのホットリロード
+> - 設定ファイルの変更を検知して自動で再起動
+> - ログをリアルタイムで確認可能
+> - 開発サイクルの効率化
 
 > 💡 なぜバッチ処理が必要か？
 > - ネットワーク通信の削減

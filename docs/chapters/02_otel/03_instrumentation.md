@@ -1,91 +1,194 @@
-# 第3章: 観測環境の構築
+# OpenTelemetryによる計装
 
-## 概要
+このセクションでは、TodoアプリケーションにOpenTelemetryを使用した計装（インスツルメンテーション）を実装します。
 
-この章では、OpenTelemetryで収集したデータを可視化するための環境を構築します。Docker Composeを使用して、OpenTelemetry Collector、Jaeger、Prometheus、Grafanaを連携させ、トレースとメトリクスの可視化を実現します。
+## ActivitySourceの設定
 
-## 学習目標
+### 1. ActivitySourceの作成
 
-1. 観測環境のアーキテクチャを理解する
-   - 各コンポーネントの役割
-   - データの流れ
-   - 連携の仕組み
-
-2. OpenTelemetry Collectorの設定方法を学ぶ
-   - 受信設定（Receivers）
-   - 処理設定（Processors）
-   - エクスポート設定（Exporters）
-   - パイプライン設定
-
-3. トレース可視化環境の構築
-   - Jaegerの設定
-   - UI操作方法
-   - トレース分析手法
-
-4. メトリクス監視環境の構築
-   - Prometheusの設定
-   - Grafanaのダッシュボード作成
-   - アラート設定
-
-## 前提条件
-
-- Docker Composeが利用可能であること
-- 第2章のOpenTelemetry実装が完了していること
-
-## 章の構成
-
-1. [観測環境のセットアップ](01_observability_setup.md)
-   - Docker Compose環境の解説
-   - コンポーネント間の連携
-   - 基本設定の確認
-
-2. [OpenTelemetry Collectorの設定](02_collector_config.md)
-   - 受信設定
-   - 処理設定
-   - エクスポート設定
-   - パイプライン設定
-
-3. [トレース可視化の実装](03_trace_visualization.md)
-   - Jaegerの基本設定
-   - UI操作方法
-   - トレース分析手法
-   - サンプリング結果の確認
-
-4. [メトリクス監視の実装](04_metrics_monitoring.md)
-   - Prometheusの設定
-   - Grafanaの設定
-   - ダッシュボード作成
-   - アラート設定
-
-## システム構成
-
-```mermaid
-graph TD
-    A[Todo API] -->|OTLP| B[OTel Collector]
-    B -->|OTLP| C[Jaeger]
-    B -->|Metrics| D[Prometheus]
-    D -->|Data Source| E[Grafana]
+```csharp
+public class TodoItemsController : ControllerBase
+{
+    private static readonly ActivitySource _activitySource = 
+        new("TodoApi");
+}
 ```
 
-## 期待される成果
+> 💡 ActivitySourceとは
+> - トレースを生成するための起点
+> - アプリケーション名を指定
+> - コンポーネント単位で作成可能
 
-1. 分散トレーシング
-   - リクエストの追跡
-   - エラーの検出
-   - パフォーマンスの分析
+## トレースの実装
 
-2. メトリクス監視
-   - リソース使用率の監視
-   - アプリケーションメトリクス
-   - カスタムメトリクス
+### 1. 基本的なトレース
 
-3. 可視化とアラート
-   - トレース可視化
-   - メトリクスダッシュボード
-   - アラート通知
+```csharp
+[HttpGet]
+public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItems()
+{
+    using var activity = _activitySource.StartActivity("GetTodoItems");
+    var items = await _context.TodoItems.ToListAsync();
+    activity?.SetTag("todo.count", items.Count);
+    return items;
+}
+```
 
-## 注意事項
+### 2. 詳細な情報の追加
 
-- セキュリティ設定は学習用に最小限としています
-- 本番環境では適切なセキュリティ設定が必要です
-- リソース使用量に注意してください
+```csharp
+[HttpGet("{id}")]
+public async Task<ActionResult<TodoItem>> GetTodoItem(int id)
+{
+    using var activity = _activitySource.StartActivity("GetTodoItem");
+    activity?.SetTag("todo.id", id);
+
+    var todoItem = await _context.TodoItems.FindAsync(id);
+
+    if (todoItem == null)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, "Todo item not found");
+        return NotFound();
+    }
+
+    activity?.SetTag("todo.title", todoItem.Title);
+    activity?.SetTag("todo.is_complete", todoItem.IsComplete);
+    return todoItem;
+}
+```
+
+### 3. エラー処理の計装
+
+```csharp
+[HttpPost]
+public async Task<ActionResult<TodoItem>> PostTodoItem(TodoItem todoItem)
+{
+    try
+    {
+        using var activity = _activitySource.StartActivity("CreateTodoItem");
+        activity?.SetTag("todo.title", todoItem.Title);
+
+        _context.TodoItems.Add(todoItem);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetTodoItem), 
+            new { id = todoItem.Id }, todoItem);
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error);
+        activity?.SetTag("error.type", ex.GetType().Name);
+        activity?.SetTag("error.message", ex.Message);
+        throw;
+    }
+}
+```
+
+## パフォーマンス計測
+
+### 1. 処理時間の計測
+
+```csharp
+[HttpPut("{id}")]
+public async Task<IActionResult> PutTodoItem(int id, TodoItem todoItem)
+{
+    var stopwatch = Stopwatch.StartNew();
+    try
+    {
+        using var activity = _activitySource.StartActivity("UpdateTodoItem");
+        // 更新処理
+        return NoContent();
+    }
+    finally
+    {
+        stopwatch.Stop();
+        activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+    }
+}
+```
+
+### 2. カスタムメトリクスの記録
+
+```csharp
+public class TodoMetrics
+{
+    private readonly ActivitySource _activitySource;
+    private readonly TodoMetrics _metrics;
+
+    public TodoItemsController(TodoContext context, TodoMetrics metrics)
+    {
+        _metrics = metrics;
+        _activitySource = new ActivitySource("TodoApi");
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<TodoItem>> PostTodoItem(TodoItem todoItem)
+    {
+        using var activity = _activitySource.StartActivity("CreateTodoItem");
+        try
+        {
+            // Todo作成処理
+            _metrics.TodoCreated(priority);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _metrics.RecordOperationError("create", ex.GetType().Name);
+            throw;
+        }
+    }
+}
+```
+
+## 動作確認
+
+### 1. トレースの生成
+
+```bash
+# サンプルリクエストの送信
+curl -X POST http://localhost:5000/api/todoitems \
+  -H "Content-Type: application/json" \
+  -d '{"title":"OpenTelemetryのテスト","isComplete":false}'
+
+# ログの確認
+docker compose logs -f api | grep -i trace
+```
+
+### 2. メトリクスの確認
+
+```bash
+# メトリクスエンドポイントの確認
+curl http://localhost:5000/metrics
+
+# Prometheusターゲットの確認
+curl http://localhost:9090/api/v1/targets
+```
+
+## トラブルシューティング
+
+### 1. トレースが出力されない場合
+
+```bash
+# サンプリング設定の確認
+docker compose exec api env | grep OTEL_TRACES
+
+# ログレベルの確認
+docker compose exec api env OTEL_LOG_LEVEL=debug
+
+# Collectorとの接続確認
+docker compose exec api nc -zv otelcol 4317
+```
+
+### 2. メトリクスが収集されない場合
+
+```bash
+# メトリクスエクスポートの確認
+docker compose logs -f api | grep -i metrics
+
+# Prometheusの接続確認
+curl http://localhost:9090/api/v1/status/config
+```
+
+## 次のステップ
+
+計装の実装が完了したら、[メトリクスとログの実装](./04_metrics_and_logging.md)に進みます。

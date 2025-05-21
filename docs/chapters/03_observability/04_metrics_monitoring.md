@@ -177,12 +177,24 @@ curl http://localhost:5000/metrics/prometheus
 
 2. ログの確認：
 ```bash
-# Prometheusのログ
+# Prometheusのログを確認
 docker compose logs -f prometheus
 
-# アプリケーションのログ
+# アプリケーションのログを確認
 docker compose logs -f todo-api
+
+# 特定のキーワードでログをフィルタ
+docker compose logs | grep metrics
+docker compose logs | grep scrape
+
+# 最近のエラーログを確認
+docker compose logs --tail=100 | grep -i error
 ```
+
+> 💡 効果的なトラブルシューティング
+> - 複数サービスのログを並行チェック
+> - キーワードで問題を特定
+> - エラー発生時の前後のログを確認
 
 ### 5.2 Grafanaの問題
 

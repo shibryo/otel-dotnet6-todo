@@ -12,7 +12,8 @@
 
 1. [Visual Studio Code](https://code.visualstudio.com/)
 2. [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-3. Visual Studio Code の Dev Containers 拡張機能
+3. [Tilt](https://tilt.dev/)
+4. Visual Studio Code の Dev Containers 拡張機能
 
 ### プロジェクトの開始
 
@@ -51,14 +52,27 @@ src/
 
 ## 開発環境の構成
 
+### Tiltfile の設定
+
+プロジェクトでは以下のサービスをTiltで管理しています：
+
+```python
+# Tiltfile
+# Docker Compose環境の定義
+docker_compose('docker-compose.yml')
+
+# 依存関係の定義
+dc_resource('db')
+dc_resource('api', deps=['db'])
+dc_resource('web', deps=['api'])
+
+# ログの設定
+dc_resource('api', 
+  resource_deps=['db'],
+  trigger_mode=TRIGGER_MODE_AUTO)
+```
+
 ### Docker Compose 設定
-
-プロジェクトでは以下のサービスを Docker Compose で管理しています：
-
-1. WebAPI (.NET 6)
-2. フロントエンド (React)
-3. データベース (PostgreSQL)
-4. 監視ツール群（次章以降で追加）
 
 ```yaml
 # docker-compose.yml の主要な設定
@@ -85,21 +99,40 @@ services:
       - "5432:5432"
 ```
 
-## 動作確認
+## 環境の起動と動作確認
 
-環境のセットアップが完了したら、以下の手順で動作確認を行います：
-
-1. データベースの接続確認
+1. 環境の起動
 ```bash
+# 開発環境の起動
+tilt up
+
+# 環境の停止（終了時）
+tilt down
+```
+
+2. データベースの接続確認
+```bash
+# ログの確認
+docker compose logs -f db
+
+# PostgreSQLへの接続確認
 docker compose exec db psql -U postgres -c "\l"
 ```
 
-2. WebAPI の起動確認
+3. WebAPI の起動確認
 ```bash
+# APIのログ確認
+docker compose logs -f api
+
+# ヘルスチェック
 curl http://localhost:5000/api/health
 ```
 
-3. フロントエンドの確認
+4. フロントエンドの確認
+```bash
+# Webサーバーのログ確認
+docker compose logs -f web
+```
 - ブラウザで http://localhost:3000 にアクセス
 
 ## トラブルシューティング
@@ -116,19 +149,33 @@ sudo kill <PID>
 ```
 
 2. データベース接続エラー
-- 環境変数の確認
-- データベースコンテナの状態確認
 ```bash
-docker compose ps
-docker compose logs db
+# 環境変数の確認
+docker compose exec api env | grep DB_
+
+# データベースコンテナのログ確認
+docker compose logs -f db
+
+# データベースの状態確認
+docker compose exec db pg_isready
 ```
 
-3. Dev Container のビルドエラー
-- Docker Desktop が起動していることを確認
-- Docker キャッシュのクリア
+3. コンテナの動作確認
 ```bash
-docker builder prune
+# 全コンテナの状態確認
+docker compose ps
+
+# 特定サービスのログ確認
+docker compose logs -f [service-name]
+
+# エラーログの抽出
+docker compose logs --tail=100 | grep -i error
 ```
+
+> 💡 効果的なデバッグ
+> - Tilt UIでリアルタイムな状態確認
+> - docker composeのログで詳細確認
+> - エラー時は関連サービスのログを横断的に確認
 
 ## 次のステップ
 

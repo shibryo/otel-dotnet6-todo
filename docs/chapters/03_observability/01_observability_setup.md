@@ -78,23 +78,41 @@ services:
 
 ### 2.2 環境の起動と確認
 
-1. コンテナの起動：
-```bash
-docker compose up -d
+1. Tiltfileの確認：
+```python
+# docker-compose環境の定義
+docker_compose('docker-compose.yml')
+
+# 依存関係の定義
+dc_resource('otelcol', deps=['jaeger'])
+dc_resource('prometheus')
+dc_resource('grafana')
 ```
 
-2. 起動状態の確認：
+2. 環境の起動：
 ```bash
-docker compose ps
+# 環境の起動
+tilt up
+
+# 環境の停止（終了時）
+tilt down
 ```
 
-3. 各UIへのアクセス確認：
+3. 起動状態の確認（Tilt UI）：
+- ブラウザで http://localhost:10350 にアクセス
+- 各サービスの状態を確認
+- ログをリアルタイムで確認
+
+4. 各UIへのアクセス確認：
 - Jaeger UI: http://localhost:16686
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000
 
-> 💡 起動順序の重要性
-> `depends_on`で指定された依存関係により、Jaeger→Collector→アプリケーションの順で起動します。
+> 💡 Tiltを使用する理由
+> - ホットリロード機能により設定変更が即座に反映
+> - 依存関係の自動管理
+> - ログの集中管理とリアルタイム表示
+> - 開発環境の一貫性確保
 
 ### 2.3 データの流れを確認
 

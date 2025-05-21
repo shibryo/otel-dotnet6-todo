@@ -145,7 +145,15 @@ docker compose logs -f otelcol
 
 # Jaegerのログ確認
 docker compose logs -f jaeger
+
+# 特定のキーワードでログをフィルタ
+docker compose logs | grep error
 ```
+
+> 💡 効果的なログ確認
+> - `-f`オプションでリアルタイムログを表示
+> - `grep`でエラーメッセージを絞り込み
+> - 複数コンテナのログを同時に確認
 
 2. 環境変数の確認：
 ```bash

@@ -1,200 +1,191 @@
-# OpenTelemetry SDKのインストールと設定
+# OpenTelemetry SDKのインストール
 
-## 概要
+このセクションでは、TodoアプリケーションにOpenTelemetry SDKをインストールし、基本的な設定を行います。
 
-この章では、TodoアプリケーションにOpenTelemetry SDKをインストールし、基本的な設定を行います。実際のコードを見ながら、各設定の意味と目的を理解していきましょう。
+## 開発環境の準備
 
-## 必要なパッケージのインストール
+### 1. Tiltfileの更新
 
-### NuGetパッケージの追加
+```python
+# OpenTelemetry SDKの変更を監視
+dc_resource('api',
+    deps=['./TodoApi'],
+    trigger_mode=TRIGGER_MODE_AUTO)
 
-```xml
-<ItemGroup>
-    <!-- OpenTelemetry基本パッケージ -->
-    <PackageReference Include="OpenTelemetry" Version="1.5.0" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.5.0" />
-    
-    <!-- 各種エクスポーター -->
-    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.5.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.5.0" />
-    
-    <!-- インストルメンテーション -->
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.5.0-beta.1" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.5.0-beta.1" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.7" />
-    
-    <!-- ホスティング関連 -->
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.5.0" />
-    <PackageReference Include="OpenTelemetry.Extensions.DependencyInjection" Version="1.4.0-rc.2" />
-</ItemGroup>
+# アプリケーションの再起動を自動化
+dc_resource('api',
+    resource_deps=['db'],
+    trigger_mode=TRIGGER_MODE_AUTO)
 ```
 
-### パッケージの役割説明
+### 2. 必要なパッケージの追加
 
-1. 基本パッケージ
-   - `OpenTelemetry`: SDKの中核機能
-   - `OpenTelemetry.Api`: API定義
+TodoApiプロジェクトに以下のパッケージを追加します：
 
-2. エクスポーター
-   - `OpenTelemetry.Exporter.Console`: デバッグ用コンソール出力
-   - `OpenTelemetry.Exporter.OpenTelemetryProtocol`: OTLPエクスポーター
+```bash
+# プロジェクトディレクトリで実行
+cd src/start/TodoApi
+dotnet add package OpenTelemetry
+dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Instrumentation.AspNetCore
+dotnet add package OpenTelemetry.Instrumentation.Http
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+```
 
-3. 自動計装
-   - `OpenTelemetry.Instrumentation.AspNetCore`: ASP.NET Core用
-   - `OpenTelemetry.Instrumentation.Http`: HTTPクライアント用
-   - `OpenTelemetry.Instrumentation.EntityFrameworkCore`: EF Core用
+> 💡 パッケージはプロジェクトファイルに直接追加する
+> - コンテナ内ではなくホストマシンで実行
+> - 変更を永続化するため
+> - 再起動時も設定が維持される
 
-4. 統合サポート
-   - `OpenTelemetry.Extensions.Hosting`: ホスティング統合
-   - `OpenTelemetry.Extensions.DependencyInjection`: DI統合
+## OpenTelemetry SDKの設定
 
-## SDKの初期化設定
-
-### Program.csでの設定
+### 1. Program.csの更新
 
 ```csharp
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // OpenTelemetryの設定
 builder.Services.AddOpenTelemetry()
-    .WithTracing(tracerProviderBuilder =>
-    {
-        tracerProviderBuilder
-            .AddSource("TodoApi")  // アプリケーション用のソース
-            .SetResourceBuilder(   // リソース情報の設定
-                ResourceBuilder.CreateDefault()
-                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
-            .AddAspNetCoreInstrumentation()    // ASP.NET Coreの自動計装
-            .AddHttpClientInstrumentation()     // HTTPクライアントの自動計装
-            .AddEntityFrameworkCoreInstrumentation()  // EF Coreの自動計装
-            .AddConsoleExporter()              // デバッグ用コンソール出力
-            .AddOtlpExporter(opts => {         // OTLPエクスポーター設定
-                opts.Endpoint = new Uri("http://otel-collector:4317");
-            });
-    })
-    .WithMetrics(metricsProviderBuilder =>
-    {
-        metricsProviderBuilder
-            .SetResourceBuilder(
-                ResourceBuilder.CreateDefault()
-                    .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddConsoleExporter()
-            .AddOtlpExporter(opts => {
-                opts.Endpoint = new Uri("http://otel-collector:4317");
-            });
-    });
+    .WithTracing(builder => builder
+        .SetResourceBuilder(ResourceBuilder.CreateDefault()
+            .AddService("todo-api"))
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
 ```
 
-### 設定の解説
+### 2. 設定の確認
 
-1. リソース設定
-   ```csharp
-   .SetResourceBuilder(
-       ResourceBuilder.CreateDefault()
-           .AddService(serviceName: "TodoApi", serviceVersion: "1.0.0"))
-   ```
-   - サービス名とバージョンを設定
-   - テレメトリーデータの送信元を識別
+```bash
+# アプリケーションの再起動
+docker compose restart api
 
-2. トレース設定
-   ```csharp
-   .AddSource("TodoApi")
-   .AddAspNetCoreInstrumentation()
-   .AddHttpClientInstrumentation()
-   .AddEntityFrameworkCoreInstrumentation()
-   ```
-   - アプリケーション用のソースを登録
-   - 各種フレームワークの自動計装を有効化
-
-3. エクスポーター設定
-   ```csharp
-   .AddConsoleExporter()
-   .AddOtlpExporter(opts => {
-       opts.Endpoint = new Uri("http://otel-collector:4317");
-   })
-   ```
-   - デバッグ用のコンソール出力
-   - OpenTelemetry Collectorへのエクスポート設定
-
-## 環境変数の設定
-
-### appsettings.jsonでの設定
-
-```json
-{
-  "OpenTelemetry": {
-    "ServiceName": "TodoApi",
-    "ServiceVersion": "1.0.0",
-    "OtlpExporter": {
-      "Endpoint": "http://otel-collector:4317"
-    }
-  }
-}
-```
-
-### Docker環境での設定
-
-```yaml
-services:
-  todo-api:
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_SERVICE_NAME=todo-api
+# ログの確認
+docker compose logs -f api | grep -i opentelemetry
 ```
 
 ## 動作確認
 
-1. アプリケーションの起動
-   ```bash
-   docker compose up -d
-   ```
+### 1. トレース出力の確認
 
-2. コンソール出力の確認
-   ```bash
-   docker compose logs -f todo-api
-   ```
+```bash
+# テストリクエストの送信
+curl -X POST http://localhost:5000/api/todoitems \
+  -H "Content-Type: application/json" \
+  -d '{"title":"OpenTelemetryのテスト","isComplete":false}'
 
-3. 期待される出力例
-   ```
-   TodoApi[TracerProvider] - Traces
-   Activity.TraceId:       abcd1234...
-   Activity.SpanId:        efgh5678...
-   Activity.TraceFlags:    Recorded
-   Activity.ActivitySourceName: TodoApi
-   Activity.DisplayName:   GET /api/TodoItems
-   Activity.Kind:         Server
-   Activity.StartTime:    2025-04-25T17:12:44Z
-   Activity.Duration:     100ms
-   Activity.Tags:
-       http.method: GET
-       http.scheme: http
-       http.target: /api/TodoItems
-   ```
+# ログの確認
+docker compose logs -f api | grep -i trace
+```
+
+### 2. エクスポートの確認
+
+```bash
+# OTLPエクスポーターの設定確認
+docker compose exec api env | grep OTEL
+
+# ネットワーク接続の確認
+docker compose exec api nc -zv otelcol 4317
+```
 
 ## トラブルシューティング
 
-### よくある問題と解決方法
+### 1. SDKの問題
 
-1. Collectorに接続できない
-   - エンドポイントの設定を確認
-   - ネットワーク接続を確認
-   - Collectorのログを確認
+```bash
+# パッケージの参照確認
+docker compose exec api dotnet list package | grep OpenTelemetry
 
-2. トレースが記録されない
-   - ソース名が正しく設定されているか確認
-   - サンプリング設定を確認
-   - デバッグ用のコンソール出力を確認
+# アセンブリの読み込み確認
+docker compose exec api dotnet run --list-modules
+```
 
-3. メトリクスが収集されない
-   - メーターの設定を確認
-   - エクスポーターの設定を確認
+### 2. 設定の問題
+
+```bash
+# 環境変数の確認
+docker compose exec api env | grep OTEL
+
+# 設定ファイルの確認
+docker compose exec api cat appsettings.Development.json
+```
+
+### 3. ランタイムの問題
+
+```bash
+# アプリケーションログの確認
+docker compose logs -f api
+
+# デバッグレベルのログ出力
+docker compose exec api env ASPNETCORE_ENVIRONMENT=Development
+```
+
+## 開発のヒント
+
+### 1. デバッグモードの活用
+
+```bash
+# デバッグログの有効化
+docker compose exec api env OTEL_LOG_LEVEL=debug
+
+# トレースの詳細出力
+docker compose exec api env OTEL_TRACES_SAMPLER=always_on
+```
+
+### 2. ホットリロードの活用
+
+```bash
+# コードの変更を監視
+docker compose logs -f api
+
+# 変更の即時反映を確認
+curl http://localhost:5000/health
+```
+
+> 💡 効果的なデバッグのポイント
+> - ログレベルを適切に設定
+> - サンプリング率を開発時は100%に
+> - エクスポート先の疎通を確認
+
+## コンポーネントのカスタマイズ
+
+### 1. カスタムTraceProviderの追加
+
+```csharp
+// カスタム設定の例
+builder.Services.AddOpenTelemetry()
+    .WithTracing(builder => builder
+        .SetResourceBuilder(ResourceBuilder.CreateDefault()
+            .AddService("todo-api")
+            .AddAttributes(new KeyValuePair<string, object>[]
+            {
+                new("environment", "development"),
+                new("version", "1.0.0")
+            }))
+        .AddAspNetCoreInstrumentation(options =>
+        {
+            options.RecordException = true;
+            options.EnrichWithException = (activity, exception) =>
+            {
+                activity.SetTag("error.type", exception.GetType().Name);
+                activity.SetTag("error.message", exception.Message);
+            };
+        }));
+```
+
+### 2. サンプリング設定
+
+```bash
+# サンプリング率の設定
+docker compose exec api env OTEL_TRACES_SAMPLER_ARG=0.5
+
+# サンプリング結果の確認
+docker compose logs -f api | grep -i sampling
+```
 
 ## 次のステップ
 
-基本的な設定が完了したら、次は自動計装とカスタム計装の実装に進みます。自動計装で得られる情報と、カスタムで追加する情報を適切に組み合わせることで、より詳細な可観測性を実現していきます。
+SDKのインストールと基本設定が完了したら、[計装の実装](./03_instrumentation.md)に進みます。

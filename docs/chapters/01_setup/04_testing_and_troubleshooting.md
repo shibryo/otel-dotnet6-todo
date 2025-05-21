@@ -4,41 +4,35 @@
 
 ## 環境の起動確認
 
-### 1. Docker Composeの起動
-
-全てのサービスを起動します：
+### 1. Tiltによる環境の起動
 
 ```bash
-docker compose up -d
+# 開発環境の起動
+tilt up
+
+# 環境の停止（終了時）
+tilt down
 ```
 
-各サービスの状態を確認：
+### 2. サービスの状態確認
 
 ```bash
+# 全サービスの状態確認
 docker compose ps
+
+# 個別のログ確認
+docker compose logs -f api    # バックエンドのログ
+docker compose logs -f web    # フロントエンドのログ
+docker compose logs -f db     # データベースのログ
+
+# エラーログの確認
+docker compose logs --tail=100 | grep -i error
 ```
 
-期待される出力：
-```
-NAME                SERVICE             STATUS              PORTS
-todo-api           api                 running             0.0.0.0:5000->80/tcp
-todo-web           web                 running             0.0.0.0:3000->3000/tcp
-todo-db            db                  running             0.0.0.0:5432->5432/tcp
-```
-
-### 2. ログの確認
-
-各サービスのログを確認：
-
-```bash
-# 全てのサービスのログを表示
-docker compose logs
-
-# 特定のサービスのログを表示
-docker compose logs api
-docker compose logs web
-docker compose logs db
-```
+> 💡 ログ確認のポイント
+> - エラーメッセージの確認
+> - サービス間の依存関係の問題
+> - タイミングに関する問題
 
 ## APIエンドポイントのテスト
 
@@ -53,205 +47,148 @@ docker compose logs db
 
 ### 2. curlコマンドでのテスト
 
-1. Todo項目の作成
 ```bash
+# Todo項目の作成
 curl -X POST http://localhost:5000/api/TodoItems \
   -H "Content-Type: application/json" \
   -d '{"title":"テストタスク","isComplete":false}'
-```
 
-2. Todo一覧の取得
-```bash
+# Todo一覧の取得
 curl http://localhost:5000/api/TodoItems
-```
 
-3. Todo項目の更新
-```bash
-curl -X PUT http://localhost:5000/api/TodoItems/1 \
-  -H "Content-Type: application/json" \
-  -d '{"id":1,"title":"更新されたタスク","isComplete":true}'
-```
-
-4. Todo項目の削除
-```bash
-curl -X DELETE http://localhost:5000/api/TodoItems/1
+# APIの状態確認
+curl http://localhost:5000/health
 ```
 
 ## フロントエンドの動作確認
 
-### 1. 基本機能の確認
+### 1. 開発サーバーの確認
 
-1. ブラウザで http://localhost:3000 にアクセス
-2. 以下の機能をテスト：
-   - 新しいTodo項目の追加
-   - Todo一覧の表示
-   - Todo項目の完了状態の切り替え
-   - Todo項目の削除
-
-### 2. ブラウザ開発者ツールでの確認
-
-1. ネットワークタブ
-   - APIリクエストの成功確認
-   - レスポンスステータスの確認
-   - データの形式確認
-
-2. コンソールタブ
-   - エラーメッセージの確認
-   - 警告メッセージの確認
-
-## 一般的な問題と解決方法
-
-### 1. バックエンド関連の問題
-
-#### データベース接続エラー
-
-症状：
-- API呼び出し時に500エラー
-- ログに接続エラーが表示
-
-解決方法：
-1. 接続文字列の確認
 ```bash
-# appsettings.json の確認
-cat TodoApi/appsettings.json
+# フロントエンドのログ監視
+docker compose logs -f web
 
-# データベースコンテナの状態確認
-docker compose ps db
+# ビルド状態の確認
+docker compose exec web npm run build -- --watch
 ```
 
-2. データベースの接続テスト
+### 2. ブラウザでの動作確認
+
+1. http://localhost:3000 にアクセス
+2. 以下の機能をテスト：
+   - Todo項目の追加
+   - 一覧表示の更新
+   - 完了状態の切り替え
+   - 項目の削除
+
+## トラブルシューティング
+
+### 1. サービス起動の問題
+
 ```bash
-# データベースコンテナに接続
-docker compose exec db psql -U postgres -d todos
+# コンテナの状態確認
+docker compose ps
+
+# リソース使用状況の確認
+docker stats
+
+# ネットワーク接続の確認
+docker network inspect $(docker compose ps -q)
+```
+
+### 2. データベース関連の問題
+
+```bash
+# DB接続の確認
+docker compose exec db pg_isready
 
 # テーブルの確認
-\dt
-```
+docker compose exec db psql -U postgres -d todos -c "\dt"
 
-#### マイグレーションエラー
-
-症状：
-- テーブルが存在しないエラー
-- スキーマの不一致エラー
-
-解決方法：
-```bash
 # マイグレーションの状態確認
-dotnet ef migrations list
-
-# マイグレーションの再適用
-dotnet ef database drop
-dotnet ef database update
+docker compose exec api dotnet ef migrations list
 ```
 
-### 2. フロントエンド関連の問題
+### 3. API接続の問題
 
-#### CORSエラー
-
-症状：
-- ブラウザコンソールにCORSエラーが表示
-- APIリクエストが失敗
-
-解決方法：
-1. バックエンドのCORS設定確認
-```csharp
-// Program.cs の CORS設定確認
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
-});
-```
-
-2. フロントエンドのAPI_BASE_URLの確認
-```typescript
-// src/api/todoApi.ts の設定確認
-const API_BASE_URL = 'http://localhost:5000/api';
-```
-
-#### ビルドエラー
-
-症状：
-- `npm run dev` が失敗
-- TypeScriptコンパイルエラー
-
-解決方法：
-1. 依存パッケージの再インストール
 ```bash
-rm -rf node_modules
-npm install
+# APIの疎通確認
+docker compose exec web curl api:5000/health
+
+# CORSエラーの確認
+docker compose logs api | grep -i cors
+
+# ネットワーク設定の確認
+docker compose exec api env | grep ASPNETCORE
 ```
 
-2. TypeScript設定の確認
+### 4. フロントエンドの問題
+
 ```bash
-# tsconfig.json の確認
-cat tsconfig.json
+# node_modulesの再構築
+docker compose exec web rm -rf node_modules
+docker compose exec web npm install
+
+# TypeScriptのエラー確認
+docker compose exec web npm run type-check
+
+# ビルドキャッシュのクリア
+docker compose exec web npm run build -- --force
 ```
 
-### 3. Docker関連の問題
+## 効率的なデバッグ方法
 
-#### コンテナ起動エラー
+### 1. 複数サービスのログ監視
 
-症状：
-- コンテナが起動しない
-- ポートが既に使用中
-
-解決方法：
-1. 既存コンテナの確認と停止
 ```bash
-# 実行中のコンテナ確認
-docker ps
+# すべてのサービスのログを表示
+docker compose logs -f
 
-# 全コンテナの停止と削除
-docker compose down
+# 特定のキーワードでフィルタ
+docker compose logs -f | grep -i error
+docker compose logs -f | grep -i warn
 ```
 
-2. ポートの使用状況確認
+### 2. コンテナ内のデバッグ
+
 ```bash
-# 使用中のポートの確認
-sudo lsof -i :5000
-sudo lsof -i :3000
+# APIコンテナ内でのデバッグ
+docker compose exec api dotnet --info
+docker compose exec api dotnet --list-sdks
+
+# フロントエンドコンテナ内でのデバッグ
+docker compose exec web node --version
+docker compose exec web npm list
 ```
 
-#### ボリュームの問題
+### 3. パフォーマンスの確認
 
-症状：
-- データが永続化されない
-- マウントエラー
-
-解決方法：
 ```bash
-# ボリュームの確認
-docker volume ls
+# リソース使用状況の監視
+docker stats
 
-# ボリュームの削除と再作成
-docker compose down -v
-docker compose up -d
+# ネットワークの確認
+docker network inspect $(docker compose ps -q)
 ```
 
 ## 動作確認チェックリスト
 
 ### バックエンド
-- [ ] サーバーが起動している
-- [ ] Swagger UIにアクセスできる
-- [ ] データベースに接続できる
-- [ ] CRUD操作が全て成功する
+- [ ] APIサーバーが起動している
+- [ ] データベース接続が確立している
+- [ ] マイグレーションが適用されている
+- [ ] エンドポイントが応答している
 
 ### フロントエンド
 - [ ] 開発サーバーが起動している
-- [ ] UIが正しく表示される
-- [ ] Todo項目を追加できる
-- [ ] Todo項目を更新できる
-- [ ] Todo項目を削除できる
+- [ ] APIと通信できている
+- [ ] コンポーネントが正しく描画されている
+- [ ] イベントハンドリングが機能している
 
 ### 統合テスト
-- [ ] フロントエンドからバックエンドへのリクエストが成功する
-- [ ] データの永続化が機能している
-- [ ] エラーハンドリングが適切に動作する
+- [ ] E2Eフローが機能している
+- [ ] データの永続化が確認できる
+- [ ] エラーハンドリングが適切
 
 ## 次のステップ
 
