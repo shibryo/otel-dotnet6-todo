@@ -20,17 +20,26 @@ dc_resource('api',
 
 ### 2. 必要なパッケージの追加
 
-TodoApiプロジェクトに以下のパッケージを追加します：
+TodoApiプロジェクトに以下の特定バージョンのパッケージを追加します：
 
 ```bash
 # プロジェクトディレクトリで実行
 cd src/start/TodoApi
-dotnet add package OpenTelemetry
-dotnet add package OpenTelemetry.Extensions.Hosting
-dotnet add package OpenTelemetry.Instrumentation.AspNetCore
-dotnet add package OpenTelemetry.Instrumentation.Http
-dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+dotnet add package OpenTelemetry --version 1.5.0
+dotnet add package OpenTelemetry.Api --version 1.5.0
+dotnet add package OpenTelemetry.Exporter.Console --version 1.5.0
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol --version 1.5.0
+dotnet add package OpenTelemetry.Extensions.Hosting --version 1.5.0
+dotnet add package OpenTelemetry.Instrumentation.AspNetCore --version 1.5.0-beta.1
+dotnet add package OpenTelemetry.Instrumentation.Http --version 1.5.0-beta.1
+dotnet add package OpenTelemetry.Instrumentation.EntityFrameworkCore --version 1.0.0-beta.7
+dotnet add package OpenTelemetry.Extensions.DependencyInjection --version 1.4.0-rc.2
 ```
+
+> 💡 バージョン指定の重要性
+> - 再現性の確保
+> - 互換性の保証
+> - セキュリティパッチの管理
 
 > 💡 パッケージはプロジェクトファイルに直接追加する
 > - コンテナ内ではなくホストマシンで実行
